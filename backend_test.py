@@ -163,19 +163,17 @@ class HomeViewProAPITester:
             ]
         }
         
-        success, data = self.make_request('POST', 'properties', property_data, 200)
+        success, data, status_code = self.make_request('POST', 'properties', property_data, 200)
         
+        # Accept both 200 and 201 as valid for property creation
+        if not success and status_code == 201:
+            success = True
+            
         if success and 'id' in data:
             self.test_property_id = data['id']
             self.log_result("Create property", True)
         else:
-            # Check if we got a 201 status instead
-            success_201, data_201 = self.make_request('POST', 'properties', property_data, 201)
-            if success_201 and 'id' in data_201:
-                self.test_property_id = data_201['id']
-                self.log_result("Create property", True)
-            else:
-                self.log_result("Create property", False, str(data))
+            self.log_result("Create property", False, f"Status: {status_code}, Data: {str(data)}")
 
     def test_get_properties(self):
         """Test getting user properties"""
