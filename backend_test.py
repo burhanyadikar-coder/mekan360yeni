@@ -51,7 +51,7 @@ class HomeViewProAPITester:
             elif method == 'DELETE':
                 response = requests.delete(url, headers=headers, timeout=30)
             else:
-                return False, {"error": f"Unsupported method: {method}"}
+                return False, {"error": f"Unsupported method: {method}"}, 0
 
             success = response.status_code == expected_status
             
@@ -60,10 +60,10 @@ class HomeViewProAPITester:
             except:
                 response_data = {"raw_response": response.text}
                 
-            return success, response_data
+            return success, response_data, response.status_code
 
         except requests.exceptions.RequestException as e:
-            return False, {"error": str(e)}
+            return False, {"error": str(e)}, 0
 
     def test_health_check(self):
         """Test API health endpoints"""
