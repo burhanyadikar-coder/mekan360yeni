@@ -70,11 +70,11 @@ class HomeViewProAPITester:
         print("\n🔍 Testing Health Check...")
         
         # Test root endpoint
-        success, data = self.make_request('GET', '')
+        success, data, _ = self.make_request('GET', '')
         self.log_result("Root endpoint", success and "HomeView Pro API" in str(data))
         
         # Test health endpoint
-        success, data = self.make_request('GET', 'health')
+        success, data, _ = self.make_request('GET', 'health')
         self.log_result("Health endpoint", success and data.get("status") == "healthy")
 
     def test_user_registration(self):
@@ -88,7 +88,7 @@ class HomeViewProAPITester:
             "phone": self.test_phone
         }
         
-        success, data = self.make_request('POST', 'auth/register', registration_data, 200)
+        success, data, _ = self.make_request('POST', 'auth/register', registration_data, 200)
         
         if success and 'access_token' in data:
             self.token = data['access_token']
@@ -106,7 +106,7 @@ class HomeViewProAPITester:
             "password": self.test_password
         }
         
-        success, data = self.make_request('POST', 'auth/login', login_data, 200)
+        success, data, _ = self.make_request('POST', 'auth/login', login_data, 200)
         
         if success and 'access_token' in data:
             self.token = data['access_token']  # Update token
@@ -118,7 +118,7 @@ class HomeViewProAPITester:
         """Test getting current user profile"""
         print("\n🔍 Testing User Profile...")
         
-        success, data = self.make_request('GET', 'auth/me', expected_status=200)
+        success, data, _ = self.make_request('GET', 'auth/me', expected_status=200)
         
         if success and data.get('email') == self.test_email:
             self.log_result("Get user profile", True)
