@@ -100,6 +100,28 @@ class HomeViewProAPITester:
         else:
             self.log_result("User registration", False, str(data))
 
+    def test_payment_completion(self):
+        """Test payment completion flow"""
+        print("\n🔍 Testing Payment Completion...")
+        
+        if not self.user_id:
+            self.log_result("Payment completion", False, "No user ID available")
+            return
+            
+        payment_data = {
+            "user_id": self.user_id,
+            "amount": 1000.0,
+            "package": "premium"
+        }
+        
+        success, data, _ = self.make_request('POST', 'auth/complete-payment', payment_data, 200)
+        
+        if success and 'access_token' in data:
+            self.token = data['access_token']
+            self.log_result("Payment completion", True)
+        else:
+            self.log_result("Payment completion", False, str(data))
+
     def test_user_login(self):
         """Test user login with existing credentials"""
         print("\n🔍 Testing User Login...")
