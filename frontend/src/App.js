@@ -4,6 +4,7 @@ import { AuthProvider, useAuth } from "./contexts/AuthContext";
 import LandingPage from "./pages/LandingPage";
 import LoginPage from "./pages/LoginPage";
 import RegisterPage from "./pages/RegisterPage";
+import PricingPage from "./pages/PricingPage";
 import PaymentPage from "./pages/PaymentPage";
 import DashboardPage from "./pages/DashboardPage";
 import PropertyFormPage from "./pages/PropertyFormPage";
@@ -72,6 +73,7 @@ function App() {
           <Routes>
             {/* Public Routes */}
             <Route path="/" element={<LandingPage />} />
+            <Route path="/pricing" element={<PricingPage />} />
             <Route path="/login" element={<PublicRoute><LoginPage /></PublicRoute>} />
             <Route path="/register" element={<PublicRoute><RegisterPage /></PublicRoute>} />
             <Route path="/payment" element={<PaymentPage />} />
