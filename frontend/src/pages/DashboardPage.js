@@ -2,7 +2,8 @@ import { useState, useEffect } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext';
 import { Button } from '../components/ui/button';
-import { Card, CardContent, CardHeader, CardTitle } from '../components/ui/card';
+import { Card, CardContent } from '../components/ui/card';
+import { Badge } from '../components/ui/badge';
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -25,7 +26,10 @@ import {
   Share2,
   LogOut,
   User,
-  Copy
+  Copy,
+  Download,
+  Users,
+  Crown
 } from 'lucide-react';
 import axios from 'axios';
 import { toast } from 'sonner';
@@ -60,11 +64,11 @@ export default function DashboardPage() {
   };
 
   const handleDelete = async (id) => {
-    if (!window.confirm('Bu daireyi silmek istediğinizden emin misiniz?')) return;
+    if (!window.confirm('Bu gayrimenkulü silmek istediğinizden emin misiniz?')) return;
 
     try {
       await axios.delete(`${API_URL}/properties/${id}`);
-      toast.success('Daire başarıyla silindi');
+      toast.success('Gayrimenkul başarıyla silindi');
       fetchData();
     } catch (error) {
       toast.error('Silme işlemi başarısız');
@@ -83,9 +87,9 @@ export default function DashboardPage() {
   };
 
   const formatDuration = (seconds) => {
-    if (seconds < 60) return `${seconds}s`;
+    if (seconds < 60) return `${Math.round(seconds)}s`;
     const minutes = Math.floor(seconds / 60);
-    const remainingSeconds = seconds % 60;
+    const remainingSeconds = Math.round(seconds % 60);
     return `${minutes}dk ${remainingSeconds}s`;
   };
 
@@ -96,6 +100,8 @@ export default function DashboardPage() {
       minimumFractionDigits: 0
     }).format(price);
   };
+
+  const canAddProperty = user?.property_limit === -1 || user?.property_count < user?.property_limit;
 
   if (loading) {
     return (
@@ -133,9 +139,15 @@ export default function DashboardPage() {
                     <span className="text-sm font-medium text-foreground hidden sm:block">{user?.company_name}</span>
                   </Button>
                 </DropdownMenuTrigger>
-                <DropdownMenuContent align="end" className="w-48">
+                <DropdownMenuContent align="end" className="w-56">
+                  <div className="px-2 py-2">
+                    <p className="text-sm font-medium">{user?.first_name} {user?.last_name}</p>
+                    <p className="text-xs text-muted-foreground">{user?.email}</p>
+                  </div>
+                  <DropdownMenuSeparator />
                   <DropdownMenuItem className="text-muted-foreground">
-                    {user?.email}
+                    <Crown className="w-4 h-4 mr-2 text-gold" />
+                    {user?.package_name}
                   </DropdownMenuItem>
                   <DropdownMenuSeparator />
                   <DropdownMenuItem onClick={handleLogout} className="text-destructive" data-testid="logout-btn">
@@ -155,25 +167,63 @@ export default function DashboardPage() {
         <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 mb-8">
           <div>
             <h1 className="font-heading text-2xl md:text-3xl font-semibold text-primary">
-              Hoş Geldiniz, {user?.company_name}
+              Hoş Geldiniz, {user?.first_name}
             </h1>
-            <p className="text-muted-foreground mt-1">Dairelerinizi yönetin ve performansı takip edin.</p>
+            <p className="text-muted-foreground mt-1">Gayrimenkullerinizi yönetin ve performansı takip edin.</p>
           </div>
-          <Link to="/property/new">
-            <Button className="bg-primary text-primary-foreground hover:bg-primary/90 rounded-full" data-testid="add-property-btn">
-              <Plus className="w-4 h-4 mr-2" />
-              Yeni Daire Ekle
-            </Button>
-          </Link>
+          <div className="flex items-center gap-3">
+            <Badge variant="outline" className="text-gold border-gold/30">
+              <Crown className="w-3 h-3 mr-1" />
+              {user?.package_name}
+            </Badge>
+            {canAddProperty ? (
+              <Link to="/property/new">
+                <Button className="bg-primary text-primary-foreground hover:bg-primary/90 rounded-full" data-testid="add-property-btn">
+                  <Plus className="w-4 h-4 mr-2" />
+                  Yeni Gayrimenkul
+                </Button>
+              </Link>
+            ) : (
+              <Button disabled className="rounded-full" title="Paket limitinize ulaştınız">
+                <Plus className="w-4 h-4 mr-2" />
+                Limit Dolu
+              </Button>
+            )}
+          </div>
         </div>
+
+        {/* Package Info */}
+        <Card className="border-border/40 bg-primary/5 mb-8">
+          <CardContent className="p-4">
+            <div className="flex flex-wrap items-center justify-between gap-4">
+              <div className="flex items-center gap-4">
+                <div className="text-sm">
+                  <span className="text-muted-foreground">Gayrimenkul: </span>
+                  <span className="font-semibold text-foreground">
+                    {user?.property_count} / {user?.property_limit === -1 ? '∞' : user?.property_limit}
+                  </span>
+                </div>
+                {user?.has_360 && (
+                  <Badge className="bg-gold/20 text-gold border-0">360° Aktif</Badge>
+                )}
+              </div>
+              <div className="text-sm text-muted-foreground">
+                Abonelik: <span className="text-green-600 font-medium">Aktif</span>
+                {user?.subscription_end && (
+                  <span> • Bitiş: {new Date(user.subscription_end).toLocaleDateString('tr-TR')}</span>
+                )}
+              </div>
+            </div>
+          </CardContent>
+        </Card>
 
         {/* Stats Grid */}
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 mb-8">
-          <Card className="stat-card border-border/40" data-testid="stat-properties">
+          <Card className="border-border/40" data-testid="stat-properties">
             <CardContent className="p-6">
               <div className="flex items-center justify-between">
                 <div>
-                  <p className="text-xs uppercase tracking-widest text-muted-foreground font-semibold">Toplam Daire</p>
+                  <p className="text-xs uppercase tracking-widest text-muted-foreground font-semibold">Gayrimenkul</p>
                   <p className="font-heading text-3xl font-semibold text-primary mt-2">{properties.length}</p>
                 </div>
                 <div className="w-12 h-12 rounded-full bg-primary/10 flex items-center justify-center">
@@ -183,11 +233,11 @@ export default function DashboardPage() {
             </CardContent>
           </Card>
 
-          <Card className="stat-card border-border/40" data-testid="stat-views">
+          <Card className="border-border/40" data-testid="stat-views">
             <CardContent className="p-6">
               <div className="flex items-center justify-between">
                 <div>
-                  <p className="text-xs uppercase tracking-widest text-muted-foreground font-semibold">Toplam Görüntüleme</p>
+                  <p className="text-xs uppercase tracking-widest text-muted-foreground font-semibold">Görüntüleme</p>
                   <p className="font-heading text-3xl font-semibold text-primary mt-2">{analytics?.total_views || 0}</p>
                 </div>
                 <div className="w-12 h-12 rounded-full bg-gold/10 flex items-center justify-center">
@@ -197,40 +247,66 @@ export default function DashboardPage() {
             </CardContent>
           </Card>
 
-          <Card className="stat-card border-border/40" data-testid="stat-duration">
+          <Card className="border-border/40" data-testid="stat-visitors">
             <CardContent className="p-6">
               <div className="flex items-center justify-between">
                 <div>
-                  <p className="text-xs uppercase tracking-widest text-muted-foreground font-semibold">Ort. Görüntüleme Süresi</p>
-                  <p className="font-heading text-3xl font-semibold text-primary mt-2">{formatDuration(Math.round(analytics?.avg_duration || 0))}</p>
+                  <p className="text-xs uppercase tracking-widest text-muted-foreground font-semibold">Ziyaretçi</p>
+                  <p className="font-heading text-3xl font-semibold text-primary mt-2">{analytics?.total_visitors || 0}</p>
                 </div>
                 <div className="w-12 h-12 rounded-full bg-emerald-100 flex items-center justify-center">
-                  <Clock className="w-6 h-6 text-emerald-900" />
+                  <Users className="w-6 h-6 text-emerald-900" />
                 </div>
               </div>
             </CardContent>
           </Card>
 
-          <Card className="stat-card border-border/40" data-testid="stat-trend">
+          <Card className="border-border/40" data-testid="stat-duration">
             <CardContent className="p-6">
               <div className="flex items-center justify-between">
                 <div>
-                  <p className="text-xs uppercase tracking-widest text-muted-foreground font-semibold">Toplam Süre</p>
-                  <p className="font-heading text-3xl font-semibold text-primary mt-2">{formatDuration(analytics?.total_duration || 0)}</p>
+                  <p className="text-xs uppercase tracking-widest text-muted-foreground font-semibold">Ort. Süre</p>
+                  <p className="font-heading text-3xl font-semibold text-primary mt-2">{formatDuration(analytics?.avg_duration || 0)}</p>
                 </div>
                 <div className="w-12 h-12 rounded-full bg-blue-100 flex items-center justify-center">
-                  <TrendingUp className="w-6 h-6 text-blue-600" />
+                  <Clock className="w-6 h-6 text-blue-600" />
                 </div>
               </div>
             </CardContent>
           </Card>
         </div>
 
+        {/* Recent Visitors */}
+        {analytics?.recent_visitors?.length > 0 && (
+          <Card className="border-border/40 mb-8">
+            <CardContent className="p-6">
+              <h3 className="font-heading text-lg font-semibold text-primary mb-4 flex items-center gap-2">
+                <Users className="w-5 h-5" />
+                Son Ziyaretçiler
+              </h3>
+              <div className="space-y-3">
+                {analytics.recent_visitors.slice(0, 5).map((visitor, index) => (
+                  <div key={index} className="flex items-center justify-between py-2 border-b border-border last:border-0">
+                    <div>
+                      <p className="font-medium text-foreground">{visitor.first_name} {visitor.last_name}</p>
+                      <p className="text-sm text-muted-foreground">{visitor.phone}</p>
+                    </div>
+                    <div className="text-right text-sm">
+                      <p className="text-muted-foreground">{visitor.visit_count} ziyaret</p>
+                      <p className="text-muted-foreground">{formatDuration(visitor.total_duration)}</p>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </CardContent>
+          </Card>
+        )}
+
         {/* Properties Section */}
         <div>
           <div className="flex items-center justify-between mb-6">
-            <h2 className="font-heading text-xl font-semibold text-primary">Daireleriniz</h2>
-            <span className="text-sm text-muted-foreground">{properties.length} daire</span>
+            <h2 className="font-heading text-xl font-semibold text-primary">Gayrimenkulleriniz</h2>
+            <span className="text-sm text-muted-foreground">{properties.length} gayrimenkul</span>
           </div>
 
           {properties.length === 0 ? (
@@ -239,12 +315,12 @@ export default function DashboardPage() {
                 <div className="w-16 h-16 rounded-full bg-muted flex items-center justify-center mx-auto mb-4">
                   <Home className="w-8 h-8 text-muted-foreground" />
                 </div>
-                <h3 className="font-heading text-lg font-medium text-foreground mb-2">Henüz daire eklemediniz</h3>
-                <p className="text-muted-foreground mb-6">İlk dairenizi ekleyerek başlayın.</p>
+                <h3 className="font-heading text-lg font-medium text-foreground mb-2">Henüz gayrimenkul eklemediniz</h3>
+                <p className="text-muted-foreground mb-6">İlk gayrimenkulünüzü ekleyerek başlayın.</p>
                 <Link to="/property/new">
                   <Button className="bg-primary text-primary-foreground hover:bg-primary/90 rounded-full" data-testid="empty-add-property-btn">
                     <Plus className="w-4 h-4 mr-2" />
-                    Daire Ekle
+                    Gayrimenkul Ekle
                   </Button>
                 </Link>
               </CardContent>
@@ -258,15 +334,15 @@ export default function DashboardPage() {
                   data-testid={`property-card-${property.id}`}
                 >
                   <div className="relative h-48 bg-muted overflow-hidden">
-                    {property.panorama_image ? (
+                    {property.cover_image ? (
                       <img
-                        src={property.panorama_image}
+                        src={property.cover_image}
                         alt={property.title}
                         className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-105"
                       />
-                    ) : property.regular_images?.length > 0 ? (
+                    ) : property.rooms?.[0]?.photos?.[0] ? (
                       <img
-                        src={property.regular_images[0]}
+                        src={property.rooms[0].photos[0]}
                         alt={property.title}
                         className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-105"
                       />
@@ -299,7 +375,7 @@ export default function DashboardPage() {
                           </DropdownMenuItem>
                           <DropdownMenuItem onClick={() => window.open(property.share_link, '_blank')} data-testid={`view-property-${property.id}`}>
                             <Share2 className="w-4 h-4 mr-2" />
-                            Görüntüle
+                            Önizle
                           </DropdownMenuItem>
                           <DropdownMenuSeparator />
                           <DropdownMenuItem 
@@ -314,13 +390,18 @@ export default function DashboardPage() {
                       </DropdownMenu>
                     </div>
 
-                    {property.panorama_image && (
-                      <div className="absolute bottom-3 left-3">
+                    <div className="absolute bottom-3 left-3 flex gap-2">
+                      {property.view_type === '360' && (
                         <span className="px-2 py-1 bg-primary/90 text-white text-xs font-medium rounded">
                           360°
                         </span>
-                      </div>
-                    )}
+                      )}
+                      {property.property_type !== 'single' && (
+                        <span className="px-2 py-1 bg-gold/90 text-white text-xs font-medium rounded capitalize">
+                          {property.property_type}
+                        </span>
+                      )}
+                    </div>
                   </div>
 
                   <CardContent className="p-5">
