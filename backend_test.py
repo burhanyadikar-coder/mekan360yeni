@@ -78,21 +78,24 @@ class HomeViewProAPITester:
         self.log_result("Health endpoint", success and data.get("status") == "healthy")
 
     def test_user_registration(self):
-        """Test user registration"""
+        """Test user registration with new package system"""
         print("\n🔍 Testing User Registration...")
         
         registration_data = {
             "email": self.test_email,
             "password": self.test_password,
+            "first_name": "Test",
+            "last_name": "User",
             "company_name": self.test_company,
-            "phone": self.test_phone
+            "phone": self.test_phone,
+            "package": "premium",
+            "auto_payment": False
         }
         
         success, data, _ = self.make_request('POST', 'auth/register', registration_data, 200)
         
-        if success and 'access_token' in data:
-            self.token = data['access_token']
-            self.user_id = data['user']['id']
+        if success and 'user_id' in data:
+            self.user_id = data['user_id']
             self.log_result("User registration", True)
         else:
             self.log_result("User registration", False, str(data))
