@@ -160,7 +160,7 @@ export default function RegisterPage() {
           </Link>
           
           <h1 className="font-heading text-3xl md:text-4xl font-semibold text-primary mb-2">
-            Hesap Oluşturun
+            Üyelik Satın Al
           </h1>
           <p className="text-muted-foreground">
             {step === 1 ? 'Bilgilerinizi girin' : 'Paketinizi seçin'}
