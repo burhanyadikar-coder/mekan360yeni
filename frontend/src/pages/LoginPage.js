@@ -45,14 +45,14 @@ export default function LoginPage() {
               Tekrar Hoş Geldiniz
             </h1>
             <p className="text-muted-foreground">
-              Hesabınıza giriş yapın ve dairelerinizi yönetmeye başlayın.
+              Hesabınıza giriş yapın ve gayrimenkullerinizi yönetmeye başlayın.
             </p>
           </div>
 
           <form onSubmit={handleSubmit} className="space-y-6" data-testid="login-form">
             <div className="space-y-2">
               <Label htmlFor="email" className="text-sm font-medium text-foreground">
-                Email Adresi
+                E-posta Adresi
               </Label>
               <div className="relative">
                 <Mail className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-muted-foreground" />
@@ -70,9 +70,14 @@ export default function LoginPage() {
             </div>
 
             <div className="space-y-2">
-              <Label htmlFor="password" className="text-sm font-medium text-foreground">
-                Şifre
-              </Label>
+              <div className="flex items-center justify-between">
+                <Label htmlFor="password" className="text-sm font-medium text-foreground">
+                  Şifre
+                </Label>
+                <Link to="/forgot-password" className="text-sm text-primary hover:underline" data-testid="forgot-password-link">
+                  Şifremi Unuttum
+                </Link>
+              </div>
               <div className="relative">
                 <Lock className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-muted-foreground" />
                 <Input
