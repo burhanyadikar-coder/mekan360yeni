@@ -667,6 +667,19 @@ export default function PropertyViewPage() {
                     compass={true}
                   />
                 </div>
+                
+                {/* Sun light overlay effect for 360 */}
+                {sunFilterStyle.isLit && (
+                  <div 
+                    className="absolute inset-0 pointer-events-none transition-opacity duration-500"
+                    style={{
+                      background: `radial-gradient(ellipse at ${sunTime[0] < 12 ? '80% 20%' : sunTime[0] > 16 ? '20% 30%' : '50% 10%'}, 
+                        rgba(255, 200, 100, ${0.1 + sunFilterStyle.intensity * 0.15}) 0%, 
+                        transparent 50%)`,
+                    }}
+                  />
+                )}
+                
                 <Badge className="absolute bottom-4 left-4 bg-blue-500 text-white">
                   360° - Sürükleyerek Gez
                 </Badge>
