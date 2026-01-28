@@ -63,7 +63,7 @@ export default function AdminDashboardPage() {
             </div>
             
             <div className="flex items-center gap-4">
-              <Link to="/admin/users">
+              <Link to="/mekanadmin/users">
                 <Button variant="ghost" className="text-white/70 hover:text-white hover:bg-white/10" data-testid="users-nav">
                   <Users className="w-4 h-4 mr-2" />
                   Kullanıcılar
