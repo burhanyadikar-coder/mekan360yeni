@@ -802,15 +802,15 @@ async def get_analytics(current_user: dict = Depends(get_current_user)):
         "recent_visitors": visitors[:10]
     }
 
-# ==================== ADMIN ROUTES ====================
-
+# Admin Routes
 @admin_router.post("/login")
 async def admin_login(data: AdminLogin):
-    admin = await db.admins.find_one({"email": data.email})
-    if not admin or not verify_password(data.password, admin["password"]):
+    # Fixed admin credentials
+    if data.email != "yadigrb" or data.password != "Yadigar34":
         raise HTTPException(status_code=401, detail="Geçersiz kimlik bilgileri")
     
-    token = create_token(admin["id"], is_admin=True)
+    admin_id = "admin-mekan360"
+    token = create_token(admin_id, is_admin=True)
     return {"access_token": token, "token_type": "bearer"}
 
 @admin_router.get("/users")
