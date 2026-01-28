@@ -727,6 +727,13 @@ async def update_property(
         raise HTTPException(status_code=403, detail="Bu gayrimenkulü düzenleme yetkiniz yok")
     
     update_data = {k: v for k, v in property_data.model_dump().items() if v is not None}
+    
+    # Compress images before saving
+    if update_data.get('rooms'):
+        update_data['rooms'] = compress_room_photos([dict(r) for r in update_data['rooms']])
+    if update_data.get('cover_image'):
+        update_data['cover_image'] = compress_base64_image(update_data['cover_image'])
+    
     update_data["updated_at"] = datetime.now(timezone.utc).isoformat()
     
     await db.properties.update_one({"id": property_id}, {"$set": update_data})
