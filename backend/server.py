@@ -864,6 +864,34 @@ async def get_property_visitors(property_id: str, current_user: dict = Depends(g
     
     return [VisitorResponse(**v) for v in visitors]
 
+@api_router.get("/properties/{property_id}/visits")
+async def get_property_visits(property_id: str, current_user: dict = Depends(get_current_user)):
+    """Get visits for a specific property"""
+    property_doc = await db.properties.find_one({"id": property_id})
+    if not property_doc:
+        raise HTTPException(status_code=404, detail="Gayrimenkul bulunamadı")
+    
+    if property_doc["user_id"] != current_user["id"]:
+        raise HTTPException(status_code=403, detail="Erişim yetkiniz yok")
+    
+    # Get visits with visitor info
+    visits = await db.visits.find(
+        {"property_id": property_id},
+        {"_id": 0}
+    ).sort("visited_at", -1).to_list(100)
+    
+    # Enrich with visitor names
+    result = []
+    for visit in visits:
+        visitor = await db.visitors.find_one({"id": visit.get("visitor_id")}, {"_id": 0})
+        result.append({
+            **visit,
+            "visitor_name": f"{visitor.get('first_name', '')} {visitor.get('last_name', '')}" if visitor else "Bilinmeyen",
+            "visitor_phone": visitor.get("phone", "") if visitor else ""
+        })
+    
+    return result
+
 @api_router.get("/analytics")
 async def get_analytics(current_user: dict = Depends(get_current_user)):
     properties = await db.properties.find(
