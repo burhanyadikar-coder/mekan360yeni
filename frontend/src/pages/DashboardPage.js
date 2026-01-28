@@ -124,6 +124,12 @@ export default function DashboardPage() {
             </Link>
 
             <div className="flex items-center gap-4">
+              <Link to="/groups">
+                <Button variant="ghost" size="sm" className="text-muted-foreground hover:text-primary" data-testid="groups-nav-btn">
+                  <FolderOpen className="w-4 h-4 mr-2" />
+                  Gruplar
+                </Button>
+              </Link>
               <Link to="/analytics">
                 <Button variant="ghost" size="sm" className="text-muted-foreground hover:text-primary" data-testid="analytics-nav-btn">
                   <BarChart3 className="w-4 h-4 mr-2" />
