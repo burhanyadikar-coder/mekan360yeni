@@ -312,10 +312,8 @@ async def get_admin_user(credentials: HTTPAuthorizationCredentials = Depends(sec
             raise HTTPException(status_code=403, detail="Admin yetkisi gerekli")
         
         admin_id = payload.get("sub")
-        admin = await db.admins.find_one({"id": admin_id}, {"_id": 0, "password": 0})
-        if not admin:
-            raise HTTPException(status_code=401, detail="Admin bulunamadı")
-        return admin
+        # Return admin info from token - no database lookup needed for fixed admin
+        return {"id": admin_id, "is_admin": True}
     except jwt.ExpiredSignatureError:
         raise HTTPException(status_code=401, detail="Token süresi dolmuş")
     except jwt.InvalidTokenError:
