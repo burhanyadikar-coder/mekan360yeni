@@ -250,6 +250,28 @@ class AdminUserUpdate(BaseModel):
     subscription_status: Optional[str] = None
     subscription_end: Optional[str] = None
 
+# Group Models
+class GroupCreate(BaseModel):
+    name: str
+    description: Optional[str] = None
+    property_ids: List[str] = []
+
+class GroupUpdate(BaseModel):
+    name: Optional[str] = None
+    description: Optional[str] = None
+    property_ids: Optional[List[str]] = None
+
+class GroupResponse(BaseModel):
+    id: str
+    user_id: str
+    company_name: str
+    name: str
+    description: Optional[str] = None
+    property_ids: List[str] = []
+    created_at: str
+    updated_at: str
+    share_link: str
+
 # ==================== AUTH HELPERS ====================
 
 def hash_password(password: str) -> str:
