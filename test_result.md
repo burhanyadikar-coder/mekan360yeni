@@ -101,3 +101,153 @@
 #====================================================================================================
 # Testing Data - Main Agent and testing sub agent both should log testing data below this section
 #====================================================================================================
+
+user_problem_statement: |
+  mekan360 - Premium Daire Tanıtım Sistemi. Daire gruplama özelliği eklendi.
+  - Grup oluşturma, düzenleme, silme
+  - Gruplara daire ekleme/çıkarma
+  - Grup paylaşım linki
+  - Admin panel /mekanadmin URL'sinde (kullanıcı: yadigrb, şifre: Yadigar34)
+  - Fiyatlar sayfasına ek hizmetler eklendi
+
+backend:
+  - task: "Group CRUD API"
+    implemented: true
+    working: "NA"
+    file: "server.py"
+    stuck_count: 0
+    priority: "high"
+    needs_retesting: true
+    status_history:
+      - working: "NA"
+        agent: "main"
+        comment: "Group oluşturma, listeleme, güncelleme, silme API'leri eklendi"
+
+  - task: "Add/Remove Property from Group"
+    implemented: true
+    working: "NA"
+    file: "server.py"
+    stuck_count: 0
+    priority: "high"
+    needs_retesting: true
+    status_history:
+      - working: "NA"
+        agent: "main"
+        comment: "Gruba daire ekleme/çıkarma endpoint'leri eklendi"
+
+  - task: "Public Group View API"
+    implemented: true
+    working: "NA"
+    file: "server.py"
+    stuck_count: 0
+    priority: "high"
+    needs_retesting: true
+    status_history:
+      - working: "NA"
+        agent: "main"
+        comment: "Public grup görüntüleme endpoint'i eklendi"
+
+  - task: "Admin Login"
+    implemented: true
+    working: "NA"
+    file: "server.py"
+    stuck_count: 0
+    priority: "high"
+    needs_retesting: true
+    status_history:
+      - working: "NA"
+        agent: "main"
+        comment: "Admin login kimlik bilgileri güncellendi (yadigrb/Yadigar34)"
+
+frontend:
+  - task: "GroupsPage"
+    implemented: true
+    working: "NA"
+    file: "pages/GroupsPage.js"
+    stuck_count: 0
+    priority: "high"
+    needs_retesting: true
+    status_history:
+      - working: "NA"
+        agent: "main"
+        comment: "Grup listesi ve oluşturma sayfası"
+
+  - task: "GroupDetailPage"
+    implemented: true
+    working: "NA"
+    file: "pages/GroupDetailPage.js"
+    stuck_count: 0
+    priority: "high"
+    needs_retesting: true
+    status_history:
+      - working: "NA"
+        agent: "main"
+        comment: "Grup detay ve daire yönetimi sayfası"
+
+  - task: "GroupViewPage"
+    implemented: true
+    working: "NA"
+    file: "pages/GroupViewPage.js"
+    stuck_count: 0
+    priority: "high"
+    needs_retesting: true
+    status_history:
+      - working: "NA"
+        agent: "main"
+        comment: "Public grup görüntüleme sayfası"
+
+  - task: "Site Name Change"
+    implemented: true
+    working: "NA"
+    file: "multiple"
+    stuck_count: 0
+    priority: "medium"
+    needs_retesting: true
+    status_history:
+      - working: "NA"
+        agent: "main"
+        comment: "HomeView Pro -> mekan360 olarak değiştirildi"
+
+  - task: "Admin Route Change"
+    implemented: true
+    working: "NA"
+    file: "App.js"
+    stuck_count: 0
+    priority: "medium"
+    needs_retesting: true
+    status_history:
+      - working: "NA"
+        agent: "main"
+        comment: "/admin -> /mekanadmin olarak değiştirildi"
+
+  - task: "Additional Services Section"
+    implemented: true
+    working: "NA"
+    file: "pages/PricingPage.js"
+    stuck_count: 0
+    priority: "medium"
+    needs_retesting: true
+    status_history:
+      - working: "NA"
+        agent: "main"
+        comment: "Profesyonel çekim hizmetleri bölümü eklendi (İstanbul Anadolu Yakası)"
+
+metadata:
+  created_by: "main_agent"
+  version: "1.0"
+  test_sequence: 1
+  run_ui: false
+
+test_plan:
+  current_focus:
+    - "Group CRUD API"
+    - "Add/Remove Property from Group"
+    - "Public Group View API"
+    - "Admin Login"
+  stuck_tasks: []
+  test_all: false
+  test_priority: "high_first"
+
+agent_communication:
+  - agent: "main"
+    message: "Grup yönetimi özellikleri eklendi. Backend API'lerini test et: grup CRUD, daire ekleme/çıkarma, public görüntüleme. Admin login: yadigrb/Yadigar34"
