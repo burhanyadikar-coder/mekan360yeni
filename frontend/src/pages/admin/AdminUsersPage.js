@@ -43,7 +43,7 @@ export default function AdminUsersPage() {
     } catch (error) {
       if (error.response?.status === 401 || error.response?.status === 403) {
         localStorage.removeItem('adminToken');
-        navigate('/admin/login');
+        navigate('/mekanadmin/login');
       } else {
         toast.error('Kullanıcılar yüklenemedi');
       }
@@ -55,7 +55,7 @@ export default function AdminUsersPage() {
   const handleLogout = () => {
     localStorage.removeItem('adminToken');
     delete axios.defaults.headers.common['Authorization'];
-    navigate('/admin/login');
+    navigate('/mekanadmin/login');
   };
 
   const filteredUsers = users.filter(user => 

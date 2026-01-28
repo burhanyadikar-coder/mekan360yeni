@@ -25,7 +25,7 @@ export default function AdminLoginPage() {
       localStorage.setItem('adminToken', response.data.access_token);
       axios.defaults.headers.common['Authorization'] = `Bearer ${response.data.access_token}`;
       toast.success('Admin girişi başarılı');
-      navigate('/admin');
+      navigate('/mekanadmin');
     } catch (error) {
       toast.error(error.response?.data?.detail || 'Giriş başarısız');
     } finally {
