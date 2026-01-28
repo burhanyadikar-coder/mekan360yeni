@@ -81,8 +81,9 @@ Emlakçılar ve inşaat firmaları için premium daire tanıtım sistemi. 3 fark
 - [ ] Çoklu dil desteği
 
 ## Admin Credentials
-- Email: admin@homeviewpro.com
-- Password: AdminHVP2024!
+- URL: /mekanadmin/login
+- Kullanıcı Adı: yadigrb
+- Şifre: Yadigar34
 
 ## Next Tasks
 1. iyzico API anahtarları ile gerçek ödeme entegrasyonu
