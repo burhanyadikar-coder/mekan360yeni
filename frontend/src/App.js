@@ -59,7 +59,7 @@ const AdminProtectedRoute = ({ children }) => {
   const adminToken = localStorage.getItem('adminToken');
   
   if (!adminToken) {
-    return <Navigate to="/admin/login" replace />;
+    return <Navigate to="/mekanadmin/login" replace />;
   }
   
   return children;
