@@ -14,9 +14,77 @@ from datetime import datetime, timezone, timedelta
 import jwt
 import bcrypt
 import secrets
+import base64
+from io import BytesIO
 
 ROOT_DIR = Path(__file__).parent
 load_dotenv(ROOT_DIR / '.env')
+
+# Image compression helper
+def compress_base64_image(base64_string: str, max_size_kb: int = 500) -> str:
+    """Compress base64 image to reduce size"""
+    try:
+        # Check if it's a data URL
+        if ',' in base64_string:
+            header, data = base64_string.split(',', 1)
+        else:
+            header = 'data:image/jpeg;base64'
+            data = base64_string
+        
+        # Decode base64
+        image_data = base64.b64decode(data)
+        
+        # Check current size
+        current_size_kb = len(image_data) / 1024
+        if current_size_kb <= max_size_kb:
+            return base64_string
+        
+        # Try to compress with PIL if available
+        try:
+            from PIL import Image
+            img = Image.open(BytesIO(image_data))
+            
+            # Convert to RGB if necessary
+            if img.mode in ('RGBA', 'P'):
+                img = img.convert('RGB')
+            
+            # Calculate new dimensions (max 1920px width)
+            max_width = 1920
+            if img.width > max_width:
+                ratio = max_width / img.width
+                new_size = (max_width, int(img.height * ratio))
+                img = img.resize(new_size, Image.LANCZOS)
+            
+            # Compress with quality adjustment
+            quality = 85
+            output = BytesIO()
+            
+            while quality > 20:
+                output.seek(0)
+                output.truncate()
+                img.save(output, format='JPEG', quality=quality, optimize=True)
+                if len(output.getvalue()) / 1024 <= max_size_kb:
+                    break
+                quality -= 10
+            
+            compressed_data = base64.b64encode(output.getvalue()).decode()
+            return f"data:image/jpeg;base64,{compressed_data}"
+        except ImportError:
+            # PIL not available, return original
+            logging.warning("PIL not available for image compression")
+            return base64_string
+    except Exception as e:
+        logging.error(f"Image compression error: {e}")
+        return base64_string
+
+def compress_room_photos(rooms: List[Dict]) -> List[Dict]:
+    """Compress all photos in room data"""
+    for room in rooms:
+        if room.get('photos'):
+            room['photos'] = [compress_base64_image(p) for p in room['photos']]
+        if room.get('panorama_photo'):
+            room['panorama_photo'] = compress_base64_image(room['panorama_photo'], max_size_kb=800)
+    return rooms
 
 # MongoDB connection
 mongo_url = os.environ['MONGO_URL']
