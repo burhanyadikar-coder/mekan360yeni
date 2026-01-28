@@ -38,7 +38,7 @@ export default function LoginPage() {
           <div>
             <Link to="/" className="flex items-center gap-3 mb-12" data-testid="login-logo">
               <Building2 className="w-8 h-8 text-primary" />
-              <span className="font-heading text-xl font-semibold text-primary">HomeView Pro</span>
+              <span className="font-heading text-xl font-semibold text-primary">mekan360</span>
             </Link>
             
             <h1 className="font-heading text-3xl md:text-4xl font-semibold text-primary mb-3">
@@ -121,7 +121,7 @@ export default function LoginPage() {
         <div className="absolute inset-0 bg-primary/60" />
         <div className="absolute bottom-16 left-16 right-16 z-10">
           <blockquote className="font-serif italic text-2xl text-white/90 mb-4">
-            "HomeView Pro ile satışlarımız %40 arttı. Müşteriler evleri satın almadan önce 360° turla gezebiliyor."
+            "mekan360 ile satışlarımız %40 arttı. Müşteriler evleri satın almadan önce 360° turla gezebiliyor."
           </blockquote>
           <p className="text-white/70">— Mehmet Yılmaz, ABC Emlak</p>
         </div>

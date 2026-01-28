@@ -211,7 +211,7 @@ export default function PropertyDetailPage() {
               </Link>
               <Link to="/" className="flex items-center gap-3" data-testid="detail-logo">
                 <Building2 className="w-7 h-7 text-primary" />
-                <span className="font-heading text-lg font-semibold text-primary">HomeView Pro</span>
+                <span className="font-heading text-lg font-semibold text-primary">mekan360</span>
               </Link>
             </div>
 
@@ -490,7 +490,7 @@ export default function PropertyDetailPage() {
       <footer className="py-8 bg-muted border-t border-border">
         <div className="max-w-7xl mx-auto px-6 lg:px-12 text-center">
           <p className="text-muted-foreground text-sm">
-            Bu ilan <span className="font-medium text-foreground">HomeView Pro</span> ile oluşturulmuştur.
+            Bu ilan <span className="font-medium text-foreground">mekan360</span> ile oluşturulmuştur.
           </p>
         </div>
       </footer>

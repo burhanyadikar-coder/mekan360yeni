@@ -119,7 +119,7 @@ export default function DashboardPage() {
           <div className="flex items-center justify-between h-16">
             <Link to="/dashboard" className="flex items-center gap-3" data-testid="dashboard-logo">
               <Building2 className="w-7 h-7 text-primary" />
-              <span className="font-heading text-lg font-semibold text-primary">HomeView Pro</span>
+              <span className="font-heading text-lg font-semibold text-primary">mekan360</span>
             </Link>
 
             <div className="flex items-center gap-4">

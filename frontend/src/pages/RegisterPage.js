@@ -156,7 +156,7 @@ export default function RegisterPage() {
         <div className="text-center mb-8">
           <Link to="/" className="inline-flex items-center gap-3 mb-6" data-testid="register-logo">
             <Building2 className="w-10 h-10 text-primary" />
-            <span className="font-heading text-2xl font-semibold text-primary">HomeView Pro</span>
+            <span className="font-heading text-2xl font-semibold text-primary">mekan360</span>
           </Link>
           
           <h1 className="font-heading text-3xl md:text-4xl font-semibold text-primary mb-2">

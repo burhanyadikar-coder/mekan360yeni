@@ -234,7 +234,7 @@ export default function PropertyViewPage() {
           <div className="max-w-4xl mx-auto px-6 text-center">
             <div className="flex items-center justify-center gap-3 mb-4">
               <Building2 className="w-8 h-8 text-gold" />
-              <span className="font-heading text-xl font-semibold text-white">HomeView Pro</span>
+              <span className="font-heading text-xl font-semibold text-white">mekan360</span>
             </div>
             <p className="text-white/70">{property.company_name}</p>
           </div>
@@ -353,7 +353,7 @@ export default function PropertyViewPage() {
             <div className="flex items-center gap-3">
               <Building2 className="w-7 h-7 text-primary" />
               <div>
-                <span className="font-heading text-lg font-semibold text-primary block leading-tight">HomeView Pro</span>
+                <span className="font-heading text-lg font-semibold text-primary block leading-tight">mekan360</span>
                 <span className="text-xs text-muted-foreground">{property.company_name}</span>
               </div>
             </div>
@@ -651,7 +651,7 @@ export default function PropertyViewPage() {
       <footer className="py-8 bg-muted border-t border-border">
         <div className="max-w-7xl mx-auto px-6 text-center">
           <p className="text-muted-foreground text-sm">
-            Bu ilan <span className="font-medium text-foreground">HomeView Pro</span> ile oluşturulmuştur.
+            Bu ilan <span className="font-medium text-foreground">mekan360</span> ile oluşturulmuştur.
           </p>
         </div>
       </footer>

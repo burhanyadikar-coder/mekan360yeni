@@ -132,7 +132,7 @@ export default function AnalyticsPage() {
               </Link>
               <Link to="/dashboard" className="flex items-center gap-3" data-testid="analytics-logo">
                 <Building2 className="w-7 h-7 text-primary" />
-                <span className="font-heading text-lg font-semibold text-primary">HomeView Pro</span>
+                <span className="font-heading text-lg font-semibold text-primary">mekan360</span>
               </Link>
             </div>
 
