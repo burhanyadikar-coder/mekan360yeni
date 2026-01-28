@@ -455,6 +455,186 @@ class HomeViewProAPITester:
         else:
             self.log_result("Delete property", False, str(data))
 
+    # ==================== GROUP MANAGEMENT TESTS ====================
+
+    def test_create_group(self):
+        """Test creating a new property group"""
+        print("\n🔍 Testing Group Creation...")
+        
+        group_data = {
+            "name": "Test Group",
+            "description": "Test description for group management",
+            "property_ids": []
+        }
+        
+        success, data, status_code = self.make_request('POST', 'groups', group_data, 200)
+        
+        # Accept both 200 and 201 as valid for group creation
+        if not success and status_code == 201:
+            success = True
+            
+        if success and 'id' in data:
+            self.test_group_id = data['id']
+            self.log_result("Create group", True)
+            
+            # Verify group data
+            if data.get('name') == group_data['name'] and data.get('description') == group_data['description']:
+                self.log_result("Group data accuracy", True)
+            else:
+                self.log_result("Group data accuracy", False, f"Expected name: {group_data['name']}, got: {data.get('name')}")
+        else:
+            self.log_result("Create group", False, f"Status: {status_code}, Data: {str(data)}")
+
+    def test_get_groups(self):
+        """Test getting user groups"""
+        print("\n🔍 Testing Get Groups...")
+        
+        success, data, _ = self.make_request('GET', 'groups', expected_status=200)
+        
+        if success and isinstance(data, list):
+            self.log_result("Get groups list", True)
+            
+            # Check if our test group is in the list
+            if self.test_group_id:
+                group_found = any(g.get('id') == self.test_group_id for g in data)
+                self.log_result("Test group in list", group_found)
+        else:
+            self.log_result("Get groups list", False, str(data))
+
+    def test_get_single_group(self):
+        """Test getting a single group by ID"""
+        print("\n🔍 Testing Get Single Group...")
+        
+        if not self.test_group_id:
+            self.log_result("Get single group", False, "No test group ID available")
+            return
+            
+        success, data, _ = self.make_request('GET', f'groups/{self.test_group_id}', expected_status=200)
+        
+        if success and data.get('id') == self.test_group_id:
+            self.log_result("Get single group", True)
+            
+            # Verify group data
+            expected_fields = ['name', 'description', 'property_ids', 'share_link']
+            all_fields_present = all(field in data for field in expected_fields)
+            self.log_result("Group data completeness", all_fields_present)
+        else:
+            self.log_result("Get single group", False, str(data))
+
+    def test_update_group(self):
+        """Test updating a group"""
+        print("\n🔍 Testing Group Update...")
+        
+        if not self.test_group_id:
+            self.log_result("Update group", False, "No test group ID available")
+            return
+            
+        update_data = {
+            "name": "Updated Test Group",
+            "description": "Updated description with new features"
+        }
+        
+        success, data, _ = self.make_request('PUT', f'groups/{self.test_group_id}', update_data, 200)
+        
+        if success and data.get('name') == update_data['name']:
+            self.log_result("Update group", True)
+        else:
+            self.log_result("Update group", False, str(data))
+
+    def test_add_property_to_group(self):
+        """Test adding a property to a group"""
+        print("\n🔍 Testing Add Property to Group...")
+        
+        if not self.test_group_id or not self.test_property_id:
+            self.log_result("Add property to group", False, "No test group ID or property ID available")
+            return
+            
+        success, data, _ = self.make_request('POST', f'groups/{self.test_group_id}/properties/{self.test_property_id}', expected_status=200)
+        
+        if success and 'message' in data:
+            self.log_result("Add property to group", True)
+            
+            # Verify property was added by getting the group
+            success_verify, group_data, _ = self.make_request('GET', f'groups/{self.test_group_id}', expected_status=200)
+            if success_verify and self.test_property_id in group_data.get('property_ids', []):
+                self.log_result("Property added verification", True)
+            else:
+                self.log_result("Property added verification", False, "Property not found in group")
+        else:
+            self.log_result("Add property to group", False, str(data))
+
+    def test_remove_property_from_group(self):
+        """Test removing a property from a group"""
+        print("\n🔍 Testing Remove Property from Group...")
+        
+        if not self.test_group_id or not self.test_property_id:
+            self.log_result("Remove property from group", False, "No test group ID or property ID available")
+            return
+            
+        success, data, _ = self.make_request('DELETE', f'groups/{self.test_group_id}/properties/{self.test_property_id}', expected_status=200)
+        
+        if success and 'message' in data:
+            self.log_result("Remove property from group", True)
+            
+            # Verify property was removed by getting the group
+            success_verify, group_data, _ = self.make_request('GET', f'groups/{self.test_group_id}', expected_status=200)
+            if success_verify and self.test_property_id not in group_data.get('property_ids', []):
+                self.log_result("Property removed verification", True)
+            else:
+                self.log_result("Property removed verification", False, "Property still found in group")
+        else:
+            self.log_result("Remove property from group", False, str(data))
+
+    def test_public_group_view(self):
+        """Test public group view endpoint"""
+        print("\n🔍 Testing Public Group View...")
+        
+        if not self.test_group_id:
+            self.log_result("Public group view", False, "No test group ID available")
+            return
+            
+        # Test without authentication (public endpoint)
+        original_token = self.token
+        self.token = None
+        
+        success, data, _ = self.make_request('GET', f'public/groups/{self.test_group_id}', expected_status=200)
+        
+        if success and 'group' in data and 'properties' in data:
+            self.log_result("Public group view", True)
+            
+            # Verify group data structure
+            group_data = data.get('group', {})
+            if group_data.get('id') == self.test_group_id:
+                self.log_result("Public group data accuracy", True)
+            else:
+                self.log_result("Public group data accuracy", False, f"Expected ID: {self.test_group_id}, got: {group_data.get('id')}")
+                
+            # Verify properties list is present (even if empty)
+            if isinstance(data.get('properties'), list):
+                self.log_result("Public group properties structure", True)
+            else:
+                self.log_result("Public group properties structure", False, "Properties should be a list")
+        else:
+            self.log_result("Public group view", False, str(data))
+            
+        # Restore token
+        self.token = original_token
+
+    def test_delete_group(self):
+        """Test deleting a group (run after other group tests)"""
+        print("\n🔍 Testing Group Deletion...")
+        
+        if not self.test_group_id:
+            self.log_result("Delete group", False, "No test group ID available")
+            return
+            
+        success, data, _ = self.make_request('DELETE', f'groups/{self.test_group_id}', expected_status=200)
+        
+        if success and 'message' in data:
+            self.log_result("Delete group", True)
+        else:
+            self.log_result("Delete group", False, str(data))
+
     def run_all_tests(self):
         """Run all backend tests"""
         print("🚀 Starting HomeView Pro Backend API Tests")
