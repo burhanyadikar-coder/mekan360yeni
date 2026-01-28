@@ -60,7 +60,7 @@ const ROOM_ICONS = {
   other: '📍'
 };
 
-// Direction to degrees mapping for sun position
+// Direction to degrees mapping (compass degrees, 0 = North)
 const DIRECTION_DEGREES = {
   'Kuzey': 0,
   'Kuzeydoğu': 45,
@@ -70,6 +70,35 @@ const DIRECTION_DEGREES = {
   'Güneybatı': 225,
   'Batı': 270,
   'Kuzeybatı': 315
+};
+
+// Get sun azimuth angle based on time (simplified model for Turkey latitude ~40°)
+// At sunrise (6:00) sun is at East (90°), at noon at South (180°), at sunset (18:00) at West (270°)
+const getSunAzimuth = (hour) => {
+  // Sun path from East to West through South
+  // 6:00 -> 90° (East)
+  // 12:00 -> 180° (South)  
+  // 18:00 -> 270° (West)
+  return 90 + ((hour - 6) / 12) * 180;
+};
+
+// Calculate if sun hits a surface with given facing direction
+const calculateSunIntensity = (sunAzimuth, facingDirection) => {
+  if (!facingDirection || !DIRECTION_DEGREES[facingDirection]) return 0.5;
+  
+  const facingDegrees = DIRECTION_DEGREES[facingDirection];
+  
+  // Calculate angle difference between sun position and surface normal
+  // Surface normal points in the direction the surface faces
+  let angleDiff = Math.abs(sunAzimuth - facingDegrees);
+  if (angleDiff > 180) angleDiff = 360 - angleDiff;
+  
+  // If angle difference < 90°, sun hits the surface
+  // Maximum intensity when sun is directly facing the surface (angleDiff = 0)
+  if (angleDiff <= 90) {
+    return 1 - (angleDiff / 90) * 0.7; // Returns 1.0 to 0.3
+  }
+  return 0.2; // Surface in shadow
 };
 
 export default function PropertyViewPage() {
@@ -82,7 +111,7 @@ export default function PropertyViewPage() {
   const [submitting, setSubmitting] = useState(false);
   
   // View states
-  const [viewMode, setViewMode] = useState('tour'); // 'tour', 'floorplan', 'info'
+  const [viewMode, setViewMode] = useState('tour');
   const [currentRoomIndex, setCurrentRoomIndex] = useState(0);
   const [currentPhotoIndex, setCurrentPhotoIndex] = useState(0);
   const [isTransitioning, setIsTransitioning] = useState(false);
@@ -101,7 +130,6 @@ export default function PropertyViewPage() {
     if (visitor && !viewStartTime.current) {
       viewStartTime.current = Date.now();
     }
-
     return () => {
       if (visitor && viewStartTime.current) {
         trackVisit();
@@ -110,7 +138,6 @@ export default function PropertyViewPage() {
   }, [visitor]);
 
   useEffect(() => {
-    // Set initial room to entry room
     if (property?.rooms?.length > 0) {
       const entryIndex = property.rooms.findIndex(r => r.id === property.entry_room_id);
       if (entryIndex >= 0) {
@@ -155,7 +182,6 @@ export default function PropertyViewPage() {
 
   const trackVisit = async () => {
     if (!visitor || !viewStartTime.current) return;
-    
     const duration = Math.round((Date.now() - viewStartTime.current) / 1000);
     try {
       await axios.post(`${API_URL}/visits`, {
@@ -169,49 +195,83 @@ export default function PropertyViewPage() {
     }
   };
 
-  // Calculate sun position based on time and facing direction
-  const getSunPosition = () => {
-    const time = sunTime[0];
-    const facingDegrees = DIRECTION_DEGREES[property?.facing_direction] || 180;
+  // Get the facing direction for current room (or fallback to property's main direction)
+  const getCurrentFacingDirection = () => {
+    const room = property?.rooms?.[currentRoomIndex];
+    return room?.facing_direction || property?.facing_direction || 'Güney';
+  };
+
+  // Calculate sun filter for photos based on room's facing direction
+  const getSunFilter = () => {
+    const hour = sunTime[0];
+    const sunAzimuth = getSunAzimuth(hour);
+    const facingDirection = getCurrentFacingDirection();
+    const intensity = calculateSunIntensity(sunAzimuth, facingDirection);
     
-    // Sun moves from east (90°) to west (270°) during the day
-    // At 6:00 it's at east, at 12:00 it's at south, at 18:00 it's at west
-    const sunAngle = 90 + ((time - 6) / 12) * 180; // 90° at 6am, 180° at noon, 270° at 6pm
+    // Base brightness
+    let brightness = 0.6 + intensity * 0.5; // 0.6 to 1.1
+    let sepia = 0;
+    let saturate = 1;
+    let temperature = 0; // For warm/cool tones
     
-    // Calculate if sun is hitting this face
-    const angleDiff = Math.abs(sunAngle - facingDegrees);
-    const normalizedDiff = angleDiff > 180 ? 360 - angleDiff : angleDiff;
-    const sunIntensity = Math.max(0, 1 - normalizedDiff / 90); // 0-1 based on angle difference
+    // Time of day effects
+    if (hour < 8) {
+      // Early morning - warm golden light
+      sepia = 0.15;
+      temperature = 0.1;
+      brightness *= 0.9;
+    } else if (hour > 17) {
+      // Evening - warm orange light
+      sepia = 0.2;
+      temperature = 0.15;
+      saturate = 1.1;
+      brightness *= 0.85;
+    } else if (hour >= 11 && hour <= 14) {
+      // Midday - bright, slightly cool
+      brightness *= 1.05;
+    }
+    
+    // If sun is directly hitting the surface, add more brightness
+    if (intensity > 0.7) {
+      brightness += 0.1;
+    }
     
     return {
-      angle: sunAngle,
-      intensity: sunIntensity,
-      x: 50 + Math.cos((sunAngle - 90) * Math.PI / 180) * 40,
-      y: 50 - Math.sin((sunAngle - 90) * Math.PI / 180) * 30
+      filter: `brightness(${brightness}) sepia(${sepia}) saturate(${saturate})`,
+      intensity,
+      isLit: intensity > 0.5
     };
   };
 
-  const getSunFilter = () => {
-    const time = sunTime[0];
-    const sunPos = getSunPosition();
+  // Get sun position for floor plan visualization
+  const getSunPositionForFloorPlan = () => {
+    const hour = sunTime[0];
+    const sunAzimuth = getSunAzimuth(hour);
     
-    let brightness = 0.8 + sunPos.intensity * 0.4;
-    let sepia = 0;
-    let saturate = 1;
-    let warmth = 0;
-
-    if (time < 8) {
-      warmth = 0.2;
-      sepia = 0.15;
-    } else if (time > 17) {
-      warmth = 0.3;
-      sepia = 0.2;
-      saturate = 1.1;
-    }
-
+    // Convert azimuth to x,y position around the floor plan
+    // Azimuth 0° = North (top), 90° = East (right), 180° = South (bottom), 270° = West (left)
+    const radians = (sunAzimuth - 90) * Math.PI / 180; // Adjust so 0° points up
+    const radius = 45; // Distance from center as percentage
+    
     return {
-      filter: `brightness(${brightness}) sepia(${sepia}) saturate(${saturate})`,
-      warmth
+      x: 50 + Math.cos(radians) * radius,
+      y: 50 + Math.sin(radians) * radius,
+      azimuth: sunAzimuth
+    };
+  };
+
+  // Check if a room gets sunlight based on its facing direction
+  const getRoomSunlight = (room) => {
+    const hour = sunTime[0];
+    const sunAzimuth = getSunAzimuth(hour);
+    const facingDirection = room.facing_direction || property?.facing_direction;
+    
+    if (!facingDirection) return { intensity: 0.5, isLit: false };
+    
+    const intensity = calculateSunIntensity(sunAzimuth, facingDirection);
+    return {
+      intensity,
+      isLit: intensity > 0.5
     };
   };
 
@@ -272,7 +332,7 @@ export default function PropertyViewPage() {
     }
   };
 
-  // Render floor plan grid (same as PropertyFormPage)
+  // Render floor plan with sun simulation
   const renderFloorPlan = () => {
     const floorRooms = property.rooms?.filter(r => r.floor === currentFloor) || [];
     
@@ -284,13 +344,12 @@ export default function PropertyViewPage() {
       );
     }
 
-    // Calculate grid bounds
     const minX = Math.min(...floorRooms.map(r => r.position_x)) - 1;
     const maxX = Math.max(...floorRooms.map(r => r.position_x)) + 1;
     const minY = Math.min(...floorRooms.map(r => r.position_y)) - 1;
     const maxY = Math.max(...floorRooms.map(r => r.position_y)) + 1;
 
-    const sunPos = getSunPosition();
+    const sunPos = getSunPositionForFloorPlan();
     
     const grid = [];
     for (let y = minY; y <= maxY; y++) {
@@ -298,9 +357,12 @@ export default function PropertyViewPage() {
       for (let x = minX; x <= maxX; x++) {
         const room = floorRooms.find(r => r.position_x === x && r.position_y === y);
         
-        row.push(
-          <div key={`${x}-${y}`} className="w-20 h-20 md:w-24 md:h-24 p-0.5">
-            {room ? (
+        if (room) {
+          const roomSunlight = getRoomSunlight(room);
+          const isCurrentRoom = currentRoomIndex === property.rooms.findIndex(r => r.id === room.id);
+          
+          row.push(
+            <div key={`${x}-${y}`} className="w-20 h-20 md:w-24 md:h-24 p-0.5">
               <button
                 onClick={() => {
                   const idx = property.rooms.findIndex(r => r.id === room.id);
@@ -312,24 +374,37 @@ export default function PropertyViewPage() {
                 className={`w-full h-full rounded-lg p-1 text-center transition-all hover:scale-105 relative overflow-hidden ${
                   room.id === property.entry_room_id 
                     ? 'bg-amber-500 text-white' 
-                    : currentRoomIndex === property.rooms.findIndex(r => r.id === room.id)
+                    : isCurrentRoom
                       ? 'bg-emerald-500 text-white'
                       : 'bg-white/20 hover:bg-white/30 text-white'
                 }`}
+                style={{
+                  boxShadow: roomSunlight.isLit 
+                    ? `inset 0 0 20px rgba(255, 200, 50, ${roomSunlight.intensity * 0.5})` 
+                    : 'none'
+                }}
               >
+                {/* Sun indicator on room if lit */}
+                {roomSunlight.isLit && (
+                  <div className="absolute top-0.5 right-0.5">
+                    <Sun className="w-3 h-3 text-yellow-300" style={{
+                      filter: `drop-shadow(0 0 ${roomSunlight.intensity * 5}px #fbbf24)`
+                    }} />
+                  </div>
+                )}
                 <span className="text-lg md:text-2xl block">{ROOM_ICONS[room.room_type] || '📍'}</span>
                 <span className="text-[10px] md:text-xs font-medium truncate block leading-tight">
                   {room.name || ROOM_NAMES[room.room_type]}
                 </span>
-                {room.square_meters && (
-                  <span className="text-[8px] md:text-[10px] opacity-70">{room.square_meters}m²</span>
+                {room.facing_direction && (
+                  <span className="text-[8px] opacity-60">{room.facing_direction}</span>
                 )}
               </button>
-            ) : (
-              <div className="w-full h-full" />
-            )}
-          </div>
-        );
+            </div>
+          );
+        } else {
+          row.push(<div key={`${x}-${y}`} className="w-20 h-20 md:w-24 md:h-24 p-0.5" />);
+        }
       }
       grid.push(
         <div key={y} className="flex justify-center">
@@ -340,31 +415,35 @@ export default function PropertyViewPage() {
 
     return (
       <div className="relative">
-        {/* Sun indicator */}
+        {/* Sun position indicator */}
         <div 
-          className="absolute w-12 h-12 transition-all duration-500 pointer-events-none z-10"
+          className="absolute w-10 h-10 md:w-12 md:h-12 transition-all duration-700 pointer-events-none z-10"
           style={{
             left: `${sunPos.x}%`,
             top: `${sunPos.y}%`,
-            transform: 'translate(-50%, -50%)',
-            opacity: sunPos.intensity > 0.1 ? 1 : 0.3
+            transform: 'translate(-50%, -50%)'
           }}
         >
-          <Sun 
-            className={`w-full h-full drop-shadow-lg ${sunPos.intensity > 0.5 ? 'text-yellow-400' : 'text-orange-400'}`}
-            style={{
-              filter: `drop-shadow(0 0 ${10 + sunPos.intensity * 20}px ${sunPos.intensity > 0.5 ? '#fbbf24' : '#f97316'})`
-            }}
-          />
+          <div className="relative">
+            <Sun 
+              className="w-full h-full text-yellow-400 animate-pulse"
+              style={{
+                filter: `drop-shadow(0 0 15px #fbbf24) drop-shadow(0 0 30px #f59e0b)`
+              }}
+            />
+            <span className="absolute -bottom-4 left-1/2 -translate-x-1/2 text-[10px] text-yellow-400 font-medium whitespace-nowrap">
+              {formatTime(sunTime[0])}
+            </span>
+          </div>
         </div>
 
-        {/* Compass indicator */}
-        <div className="absolute top-2 right-2 text-white/60 text-xs flex items-center gap-1">
-          <Compass className="w-4 h-4" />
-          <span>{property.facing_direction || 'Güney'}</span>
-        </div>
+        {/* Compass */}
+        <div className="absolute top-0 left-1/2 -translate-x-1/2 -translate-y-2 text-white/40 text-xs">K</div>
+        <div className="absolute bottom-0 left-1/2 -translate-x-1/2 translate-y-2 text-white/40 text-xs">G</div>
+        <div className="absolute left-0 top-1/2 -translate-y-1/2 -translate-x-2 text-white/40 text-xs">B</div>
+        <div className="absolute right-0 top-1/2 -translate-y-1/2 translate-x-2 text-white/40 text-xs">D</div>
 
-        <div className="space-y-0">{grid}</div>
+        <div className="space-y-0 py-4">{grid}</div>
       </div>
     );
   };
@@ -400,7 +479,6 @@ export default function PropertyViewPage() {
     return (
       <div className="min-h-screen bg-gradient-to-br from-emerald-950 to-emerald-900 flex items-center justify-center p-4">
         <div className="w-full max-w-lg">
-          {/* Property Preview Card */}
           <Card className="bg-white/10 backdrop-blur border-white/20 overflow-hidden mb-6">
             {(property.cover_image || property.rooms?.[0]?.photos?.[0]) && (
               <img 
@@ -434,7 +512,6 @@ export default function PropertyViewPage() {
             </CardContent>
           </Card>
 
-          {/* Visitor Form */}
           <Card className="bg-white/10 backdrop-blur border-white/20">
             <CardContent className="p-6">
               <h2 className="font-heading text-xl text-white mb-2">Daireyi Görüntüle</h2>
@@ -487,11 +564,10 @@ export default function PropertyViewPage() {
     );
   }
 
-  // Main View - Tour mode is default
+  // Main View
   return (
     <div className={`min-h-screen bg-gradient-to-br from-emerald-950 to-emerald-900 ${fullscreen ? 'fixed inset-0 z-50' : ''}`}>
       
-      {/* Header - not shown in fullscreen */}
       {!fullscreen && (
         <header className="p-3 flex items-center justify-between border-b border-white/10">
           <div className="flex items-center gap-2">
@@ -531,9 +607,7 @@ export default function PropertyViewPage() {
       {/* Tour View */}
       {viewMode === 'tour' && (
         <div className="flex flex-col h-[calc(100vh-56px)]">
-          {/* Photo/Panorama View */}
           <div className={`relative flex-1 ${fullscreen ? 'h-screen' : ''}`}>
-            {/* Fullscreen toggle */}
             {!fullscreen ? (
               <Button 
                 variant="ghost" 
@@ -554,21 +628,29 @@ export default function PropertyViewPage() {
               </Button>
             )}
 
-            {/* Sun indicator overlay */}
+            {/* Sun indicator with room direction */}
             {!fullscreen && (
-              <div className="absolute top-4 left-4 z-20 flex items-center gap-2 bg-black/30 rounded-full px-3 py-1">
-                <Sun className="w-4 h-4 text-yellow-400" style={{
-                  filter: `drop-shadow(0 0 ${5 + getSunPosition().intensity * 10}px #fbbf24)`
-                }} />
-                <span className="text-white/80 text-sm">{formatTime(sunTime[0])}</span>
-                {property.facing_direction && (
-                  <span className="text-white/50 text-xs">• {property.facing_direction}</span>
+              <div className="absolute top-4 left-4 z-20 flex items-center gap-2 bg-black/40 backdrop-blur rounded-full px-3 py-1.5">
+                <Sun 
+                  className={`w-5 h-5 ${sunFilterStyle.isLit ? 'text-yellow-400' : 'text-orange-400'}`}
+                  style={{
+                    filter: sunFilterStyle.isLit 
+                      ? 'drop-shadow(0 0 8px #fbbf24)' 
+                      : 'drop-shadow(0 0 4px #f97316)'
+                  }}
+                />
+                <span className="text-white text-sm font-medium">{formatTime(sunTime[0])}</span>
+                <span className="text-white/50 text-xs">•</span>
+                <span className="text-white/70 text-xs">{getCurrentFacingDirection()}</span>
+                {sunFilterStyle.isLit && (
+                  <Badge className="bg-yellow-500/30 text-yellow-300 text-xs border-0 ml-1">
+                    Güneş Alıyor
+                  </Badge>
                 )}
               </div>
             )}
 
             {has360 ? (
-              // 360 Panorama
               <div className="w-full h-full relative">
                 <div style={{ filter: sunFilterStyle.filter }} className="w-full h-full">
                   <Pannellum
@@ -590,7 +672,6 @@ export default function PropertyViewPage() {
                 </Badge>
               </div>
             ) : hasPhotos ? (
-              // Regular Photos with Transition
               <div className="relative w-full h-full overflow-hidden bg-black">
                 <img
                   src={currentRoom.photos[currentPhotoIndex]}
@@ -601,7 +682,6 @@ export default function PropertyViewPage() {
                   style={{ filter: sunFilterStyle.filter }}
                 />
                 
-                {/* Photo Navigation */}
                 {currentRoom.photos.length > 1 && (
                   <>
                     <button
@@ -617,7 +697,6 @@ export default function PropertyViewPage() {
                       <ChevronRight className="w-6 h-6" />
                     </button>
                     
-                    {/* Photo Indicators */}
                     <div className="absolute bottom-4 left-1/2 -translate-x-1/2 flex gap-2">
                       {currentRoom.photos.map((_, idx) => (
                         <button
@@ -648,10 +727,8 @@ export default function PropertyViewPage() {
             )}
           </div>
 
-          {/* Bottom Controls - not in fullscreen */}
           {!fullscreen && (
             <div className="bg-black/40 backdrop-blur">
-              {/* Sun Simulation */}
               <div className="px-4 py-3 border-b border-white/10">
                 <div className="flex items-center gap-4">
                   <Sun className="w-5 h-5 text-yellow-400" />
@@ -665,29 +742,34 @@ export default function PropertyViewPage() {
                       className="w-full"
                     />
                   </div>
-                  <span className="text-white/70 text-sm w-12">{formatTime(sunTime[0])}</span>
+                  <span className="text-white/70 text-sm w-14 text-right">{formatTime(sunTime[0])}</span>
                 </div>
               </div>
 
-              {/* Room Navigation */}
               {property.rooms?.length > 0 && (
                 <div className="px-4 py-3">
                   <div className="flex gap-2 overflow-x-auto pb-2">
-                    {property.rooms.map((room, idx) => (
-                      <button
-                        key={room.id}
-                        onClick={() => handleRoomChange(idx)}
-                        className={`flex-shrink-0 px-4 py-2 rounded-full text-sm transition-all flex items-center gap-2 ${
-                          idx === currentRoomIndex
-                            ? 'bg-amber-500 text-white'
-                            : 'bg-white/10 text-white/70 hover:bg-white/20'
-                        }`}
-                      >
-                        <span>{ROOM_ICONS[room.room_type] || '📍'}</span>
-                        {room.name || ROOM_NAMES[room.room_type] || room.room_type}
-                        {room.panorama_photo && <span className="text-blue-300">360°</span>}
-                      </button>
-                    ))}
+                    {property.rooms.map((room, idx) => {
+                      const roomSunlight = getRoomSunlight(room);
+                      return (
+                        <button
+                          key={room.id}
+                          onClick={() => handleRoomChange(idx)}
+                          className={`flex-shrink-0 px-4 py-2 rounded-full text-sm transition-all flex items-center gap-2 ${
+                            idx === currentRoomIndex
+                              ? 'bg-amber-500 text-white'
+                              : 'bg-white/10 text-white/70 hover:bg-white/20'
+                          }`}
+                        >
+                          <span>{ROOM_ICONS[room.room_type] || '📍'}</span>
+                          {room.name || ROOM_NAMES[room.room_type]}
+                          {roomSunlight.isLit && (
+                            <Sun className="w-3 h-3 text-yellow-300" />
+                          )}
+                          {room.panorama_photo && <span className="text-blue-300 text-xs">360°</span>}
+                        </button>
+                      );
+                    })}
                   </div>
                 </div>
               )}
@@ -701,10 +783,9 @@ export default function PropertyViewPage() {
         <div className="p-4">
           <div className="text-center mb-4">
             <h2 className="text-white font-heading text-xl mb-1">{property.title}</h2>
-            <p className="text-white/60 text-sm">{property.room_count} • {property.square_meters} m²</p>
+            <p className="text-white/60 text-sm">{property.room_count} • {property.square_meters} m² • Cephe: {property.facing_direction || 'Belirtilmemiş'}</p>
           </div>
 
-          {/* Floor selector for duplex/triplex */}
           {maxFloors > 1 && (
             <div className="flex items-center justify-center gap-4 mb-6">
               {[...Array(maxFloors)].map((_, idx) => (
@@ -723,7 +804,7 @@ export default function PropertyViewPage() {
             </div>
           )}
 
-          {/* Sun Simulation for Floor Plan */}
+          {/* Sun Simulation Slider */}
           <div className="mb-4 px-4 py-3 bg-white/10 rounded-xl">
             <div className="flex items-center gap-4">
               <Sun className="w-5 h-5 text-yellow-400" />
@@ -737,20 +818,20 @@ export default function PropertyViewPage() {
                   className="w-full"
                 />
               </div>
-              <span className="text-white/70 text-sm w-12">{formatTime(sunTime[0])}</span>
+              <span className="text-white/70 text-sm w-14 text-right">{formatTime(sunTime[0])}</span>
             </div>
             <p className="text-white/50 text-xs mt-2 text-center">
-              Güneş simülasyonu • Cephe: {property.facing_direction || 'Belirtilmemiş'}
+              Güneş saate göre hareket eder • Işık alan odalar gösterilir
             </p>
           </div>
 
           {/* Floor Plan Grid */}
-          <div className="bg-white/10 rounded-2xl p-4 mb-6 min-h-[300px]">
+          <div className="bg-white/10 rounded-2xl p-4 mb-6 min-h-[300px] relative">
             {renderFloorPlan()}
           </div>
 
           {/* Legend */}
-          <div className="flex items-center justify-center gap-6 text-sm text-white/60 mb-6">
+          <div className="flex flex-wrap items-center justify-center gap-4 text-sm text-white/60 mb-6">
             <div className="flex items-center gap-2">
               <div className="w-4 h-4 rounded bg-amber-500" />
               <span>Giriş</span>
@@ -760,12 +841,11 @@ export default function PropertyViewPage() {
               <span>Seçili</span>
             </div>
             <div className="flex items-center gap-2">
-              <div className="w-4 h-4 rounded bg-white/20" />
-              <span>Oda</span>
+              <Sun className="w-4 h-4 text-yellow-400" />
+              <span>Güneş Alıyor</span>
             </div>
           </div>
 
-          {/* Back to Tour Button */}
           <Button 
             onClick={() => setViewMode('tour')}
             className="w-full h-12 rounded-full bg-amber-500 hover:bg-amber-600 text-white"
@@ -779,7 +859,6 @@ export default function PropertyViewPage() {
       {/* Info View */}
       {viewMode === 'info' && (
         <div className="p-4 pb-24 overflow-auto" style={{ maxHeight: 'calc(100vh - 56px)' }}>
-          {/* Cover */}
           <div className="relative h-48 rounded-xl overflow-hidden mb-6">
             {(property.cover_image || property.rooms?.[0]?.photos?.[0]) ? (
               <img 
@@ -805,7 +884,6 @@ export default function PropertyViewPage() {
             </div>
           </div>
 
-          {/* Quick Stats */}
           <div className="grid grid-cols-4 gap-2 mb-6">
             <div className="bg-white/10 rounded-xl p-3 text-center">
               <Ruler className="w-4 h-4 text-amber-400 mx-auto mb-1" />
@@ -829,7 +907,6 @@ export default function PropertyViewPage() {
             </div>
           </div>
 
-          {/* Details */}
           <div className="bg-white/10 rounded-xl p-4 mb-6">
             <h3 className="text-white font-semibold mb-3">Detaylar</h3>
             <div className="grid grid-cols-2 gap-3 text-sm">
@@ -846,7 +923,6 @@ export default function PropertyViewPage() {
             </div>
           </div>
 
-          {/* Description */}
           {property.description && (
             <div className="bg-white/10 rounded-xl p-4 mb-6">
               <h3 className="text-white font-semibold mb-2">Açıklama</h3>
@@ -854,7 +930,6 @@ export default function PropertyViewPage() {
             </div>
           )}
 
-          {/* Fixed bottom button */}
           <div className="fixed bottom-0 left-0 right-0 p-4 bg-gradient-to-t from-emerald-950 via-emerald-950/95 to-transparent">
             <Button 
               onClick={() => setViewMode('tour')}
