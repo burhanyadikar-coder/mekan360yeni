@@ -118,6 +118,7 @@ export default function PropertyViewPage() {
   const [sunTime, setSunTime] = useState([12]);
   const [fullscreen, setFullscreen] = useState(false);
   const [currentFloor, setCurrentFloor] = useState(0);
+  const [showInfoOverlay, setShowInfoOverlay] = useState(true);
   
   const viewStartTime = useRef(null);
   const visitedRooms = useRef([]);
