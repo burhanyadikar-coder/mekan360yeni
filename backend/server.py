@@ -796,12 +796,31 @@ async def create_property(property_data: PropertyCreate, current_user: dict = De
     property_id = str(uuid.uuid4())
     now = datetime.now(timezone.utc).isoformat()
     
-    # Compress images before saving
     property_dict = property_data.model_dump()
-    if property_dict.get('rooms'):
-        property_dict['rooms'] = compress_room_photos([dict(r) for r in property_dict['rooms']])
-    if property_dict.get('cover_image'):
-        property_dict['cover_image'] = compress_base64_image(property_dict['cover_image'])
+    
+    # Upload images to Bunny CDN (or compress if Bunny not enabled)
+    if BUNNY_ENABLED:
+        # Upload rooms photos to Bunny CDN
+        if property_dict.get('rooms'):
+            property_dict['rooms'] = await process_room_photos_for_bunny(
+                [dict(r) for r in property_dict['rooms']], 
+                property_id
+            )
+        # Upload cover image to Bunny CDN
+        if property_dict.get('cover_image') and property_dict['cover_image'].startswith('data:'):
+            cdn_url = await upload_base64_to_bunny(
+                property_dict['cover_image'],
+                f"properties/{property_id}",
+                "cover.jpg"
+            )
+            if cdn_url:
+                property_dict['cover_image'] = cdn_url
+    else:
+        # Fallback: compress images for MongoDB storage
+        if property_dict.get('rooms'):
+            property_dict['rooms'] = compress_room_photos([dict(r) for r in property_dict['rooms']])
+        if property_dict.get('cover_image'):
+            property_dict['cover_image'] = compress_base64_image(property_dict['cover_image'])
     
     property_doc = {
         "id": property_id,
