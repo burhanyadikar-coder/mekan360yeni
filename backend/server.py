@@ -875,11 +875,28 @@ async def update_property(
     
     update_data = {k: v for k, v in property_data.model_dump().items() if v is not None}
     
-    # Compress images before saving
-    if update_data.get('rooms'):
-        update_data['rooms'] = compress_room_photos([dict(r) for r in update_data['rooms']])
-    if update_data.get('cover_image'):
-        update_data['cover_image'] = compress_base64_image(update_data['cover_image'])
+    # Upload images to Bunny CDN (or compress if Bunny not enabled)
+    if BUNNY_ENABLED:
+        if update_data.get('rooms'):
+            # Process only new base64 images, keep existing CDN URLs
+            update_data['rooms'] = await process_room_photos_for_bunny(
+                [dict(r) for r in update_data['rooms']], 
+                property_id
+            )
+        if update_data.get('cover_image') and update_data['cover_image'].startswith('data:'):
+            cdn_url = await upload_base64_to_bunny(
+                update_data['cover_image'],
+                f"properties/{property_id}",
+                "cover.jpg"
+            )
+            if cdn_url:
+                update_data['cover_image'] = cdn_url
+    else:
+        # Fallback: compress images for MongoDB storage
+        if update_data.get('rooms'):
+            update_data['rooms'] = compress_room_photos([dict(r) for r in update_data['rooms']])
+        if update_data.get('cover_image'):
+            update_data['cover_image'] = compress_base64_image(update_data['cover_image'])
     
     update_data["updated_at"] = datetime.now(timezone.utc).isoformat()
     
