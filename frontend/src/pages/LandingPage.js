@@ -206,7 +206,7 @@ export default function LandingPage() {
         <div className="max-w-7xl mx-auto px-6 lg:px-12">
           <div className="flex flex-col md:flex-row items-center justify-between gap-6">
             <div className="flex items-center gap-3">
-              <Building2 className="w-6 h-6 text-primary" />
+              <LogoIcon className="w-8 h-8" />
               <span className="font-heading text-lg font-semibold text-primary">mekan360</span>
             </div>
             <div className="flex items-center gap-6">
