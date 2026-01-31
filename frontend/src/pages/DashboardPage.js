@@ -12,7 +12,6 @@ import {
   DropdownMenuTrigger,
 } from '../components/ui/dropdown-menu';
 import {
-  Building2,
   Plus,
   Eye,
   Clock,
@@ -32,6 +31,7 @@ import {
   Crown,
   FolderOpen
 } from 'lucide-react';
+import { LogoIcon } from '../components/Logo';
 import axios from 'axios';
 import { toast } from 'sonner';
 
