@@ -401,7 +401,7 @@ export default function PricingPage() {
                 Ziyaretçi bilgilerini nasıl göreceğim?
               </h3>
               <p className="text-muted-foreground">
-                Gayrimenkullerinizi görüntüleyen her ziyaretçi önce isim ve telefon bilgilerini girmek zorundadır. Bu bilgiler dashboard'unuzdaki analitikler bölümünde görüntülenebilir.
+                Gayrimenkullerinizi görüntüleyen her ziyaretçi önce isim ve telefon bilgilerini girmek zorundadır. Bu bilgiler dashboard&apos;unuzdaki analitikler bölümünde görüntülenebilir.
               </p>
             </div>
           </div>
