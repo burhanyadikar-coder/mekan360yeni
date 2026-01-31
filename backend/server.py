@@ -238,26 +238,48 @@ security = HTTPBearer()
 # ==================== PACKAGES ====================
 
 PACKAGES = {
+    "free": {
+        "name": "Ücretsiz Paket",
+        "price": 0,
+        "property_limit": 1,
+        "features": ["regular_photos", "mapping"],
+        "has_360": False,
+        "is_free": True,
+        "weekly_limit": 1,  # Haftalık 1 gayrimenkul
+        "auto_delete_days": 7  # 7 gün sonra otomatik sil
+    },
     "starter": {
         "name": "Başlangıç Paketi",
         "price": 700,
         "property_limit": 10,
         "features": ["regular_photos", "mapping", "company_name", "sun_simulation"],
-        "has_360": False
+        "has_360": False,
+        "is_free": False
     },
     "premium": {
         "name": "Premium Paket",
         "price": 1000,
         "property_limit": 50,
         "features": ["regular_photos", "360_photos", "mapping", "poi", "property_details", "company_name", "sun_simulation"],
-        "has_360": True
+        "has_360": True,
+        "is_free": False
     },
     "ultra": {
         "name": "Ultra Paket",
         "price": 2000,
-        "property_limit": -1,  # unlimited
+        "property_limit": 100,  # 100 gayrimenkul ile sınırlı
         "features": ["regular_photos", "360_photos", "mapping", "poi", "property_details", "company_name", "sun_simulation"],
-        "has_360": True
+        "has_360": True,
+        "is_free": False
+    },
+    "corporate": {
+        "name": "Kurumsal Paket",
+        "price": -1,  # Fiyat yok, iletişime geçin
+        "property_limit": -1,  # Sınırsız
+        "features": ["regular_photos", "360_photos", "mapping", "poi", "property_details", "company_name", "sun_simulation", "priority_support", "dedicated_manager"],
+        "has_360": True,
+        "is_free": False,
+        "contact_required": True
     }
 }
 
