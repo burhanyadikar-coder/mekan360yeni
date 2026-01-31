@@ -585,9 +585,18 @@ async def register(user_data: UserCreate):
     if user_data.package not in PACKAGES:
         raise HTTPException(status_code=400, detail="Geçersiz paket")
     
+    # Kurumsal paket için kayıt engelle
+    if user_data.package == "corporate":
+        raise HTTPException(status_code=400, detail="Kurumsal paket için lütfen bizimle iletişime geçin: 0551 478 02 59")
+    
     package_info = PACKAGES[user_data.package]
     user_id = str(uuid.uuid4())
     now = datetime.now(timezone.utc)
+    
+    # Ücretsiz paket için direkt aktif, diğerleri için ödeme bekliyor
+    is_free = package_info.get("is_free", False)
+    subscription_status = "active" if is_free else "pending"
+    subscription_end = (now + timedelta(days=365)).isoformat() if is_free else None
     
     user_doc = {
         "id": user_id,
@@ -599,14 +608,27 @@ async def register(user_data: UserCreate):
         "phone": user_data.phone,
         "package": user_data.package,
         "auto_payment": user_data.auto_payment,
-        "subscription_status": "pending",  # pending until payment
-        "subscription_end": None,
+        "subscription_status": subscription_status,
+        "subscription_end": subscription_end,
         "property_count": 0,
         "created_at": now.isoformat(),
         "updated_at": now.isoformat()
     }
     
     await db.users.insert_one(user_doc)
+    
+    # Ücretsiz kullanıcı için direkt giriş yapılabilir
+    if is_free:
+        token = create_token(user_id, is_admin=False)
+        return {
+            "user_id": user_id,
+            "email": user_data.email,
+            "package": user_data.package,
+            "package_name": package_info["name"],
+            "amount": 0,
+            "access_token": token,
+            "message": "Kayıt başarılı! Ücretsiz paketiniz aktif."
+        }
     
     # Return user data for payment flow
     return {
