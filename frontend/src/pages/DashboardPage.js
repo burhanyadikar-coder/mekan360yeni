@@ -116,32 +116,32 @@ export default function DashboardPage() {
     <div className="min-h-screen bg-background">
       {/* Header */}
       <header className="sticky top-0 z-50 glass border-b border-border">
-        <div className="max-w-7xl mx-auto px-6 lg:px-12">
-          <div className="flex items-center justify-between h-16">
-            <Link to="/dashboard" className="flex items-center gap-3" data-testid="dashboard-logo">
-              <LogoIcon className="w-9 h-9" />
-              <span className="font-heading text-lg font-semibold text-primary">mekan360</span>
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-12">
+          <div className="flex items-center justify-between h-14 sm:h-16">
+            <Link to="/dashboard" className="flex items-center gap-2 sm:gap-3" data-testid="dashboard-logo">
+              <LogoIcon className="w-7 h-7 sm:w-9 sm:h-9" />
+              <span className="font-heading text-base sm:text-lg font-semibold text-primary">mekan360</span>
             </Link>
 
-            <div className="flex items-center gap-4">
+            <div className="flex items-center gap-1 sm:gap-4">
               <Link to="/groups">
-                <Button variant="ghost" size="sm" className="text-muted-foreground hover:text-primary" data-testid="groups-nav-btn">
-                  <FolderOpen className="w-4 h-4 mr-2" />
-                  Gruplar
+                <Button variant="ghost" size="sm" className="text-muted-foreground hover:text-primary px-2 sm:px-4" data-testid="groups-nav-btn">
+                  <FolderOpen className="w-4 h-4 sm:mr-2" />
+                  <span className="hidden sm:inline">Gruplar</span>
                 </Button>
               </Link>
               <Link to="/analytics">
-                <Button variant="ghost" size="sm" className="text-muted-foreground hover:text-primary" data-testid="analytics-nav-btn">
-                  <BarChart3 className="w-4 h-4 mr-2" />
-                  Raporlar
+                <Button variant="ghost" size="sm" className="text-muted-foreground hover:text-primary px-2 sm:px-4" data-testid="analytics-nav-btn">
+                  <BarChart3 className="w-4 h-4 sm:mr-2" />
+                  <span className="hidden sm:inline">Raporlar</span>
                 </Button>
               </Link>
 
               <DropdownMenu>
                 <DropdownMenuTrigger asChild>
-                  <Button variant="ghost" size="sm" className="flex items-center gap-2" data-testid="user-menu-btn">
-                    <div className="w-8 h-8 rounded-full bg-primary/10 flex items-center justify-center">
-                      <User className="w-4 h-4 text-primary" />
+                  <Button variant="ghost" size="sm" className="flex items-center gap-1 sm:gap-2 px-1 sm:px-3" data-testid="user-menu-btn">
+                    <div className="w-7 h-7 sm:w-8 sm:h-8 rounded-full bg-primary/10 flex items-center justify-center">
+                      <User className="w-3.5 h-3.5 sm:w-4 sm:h-4 text-primary" />
                     </div>
                     <span className="text-sm font-medium text-foreground hidden sm:block">{user?.company_name}</span>
                   </Button>
