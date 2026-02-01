@@ -106,6 +106,7 @@ function App() {
             <Route path="/mekanadmin/users/:id" element={<AdminProtectedRoute><AdminUserDetailPage /></AdminProtectedRoute>} />
           </Routes>
           <Toaster position="top-right" richColors />
+          <InstallPWA />
         </div>
       </BrowserRouter>
     </AuthProvider>
