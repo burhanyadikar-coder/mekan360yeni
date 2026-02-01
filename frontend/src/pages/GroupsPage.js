@@ -161,17 +161,17 @@ export default function GroupsPage() {
         </div>
       </nav>
 
-      <div className="max-w-7xl mx-auto px-6 lg:px-12 py-8">
+      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-12 py-6 sm:py-8">
         {/* Header */}
-        <div className="flex items-center justify-between mb-8">
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-6 sm:mb-8">
           <div>
-            <h1 className="font-heading text-3xl font-semibold text-primary">Portfolyo Grupları</h1>
-            <p className="text-muted-foreground mt-1">Dairelerinizi gruplandırarak paylaşın</p>
+            <h1 className="font-heading text-2xl sm:text-3xl font-semibold text-primary">Portfolyo Grupları</h1>
+            <p className="text-muted-foreground mt-1 text-sm sm:text-base">Dairelerinizi gruplandırarak paylaşın</p>
           </div>
           
           <Dialog open={createDialogOpen} onOpenChange={setCreateDialogOpen}>
             <DialogTrigger asChild>
-              <Button className="bg-primary text-primary-foreground rounded-full">
+              <Button className="bg-primary text-primary-foreground rounded-full w-full sm:w-auto">
                 <Plus className="w-4 h-4 mr-2" />
                 Yeni Grup
               </Button>
