@@ -201,7 +201,7 @@ export default function AdminUsersPage() {
                   <span className="hidden sm:inline">Kullanıcı Ekle</span>
                 </Button>
               </DialogTrigger>
-            <DialogContent className="max-w-lg">
+              <DialogContent className="max-w-lg">
               <DialogHeader>
                 <DialogTitle>Yeni Kullanıcı Ekle</DialogTitle>
               </DialogHeader>
