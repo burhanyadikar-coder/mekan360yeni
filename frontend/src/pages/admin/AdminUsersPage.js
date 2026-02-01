@@ -150,56 +150,57 @@ export default function AdminUsersPage() {
     <div className="min-h-screen bg-emerald-950">
       {/* Header */}
       <header className="bg-emerald-900/50 border-b border-white/10">
-        <div className="max-w-7xl mx-auto px-6 lg:px-12">
-          <div className="flex items-center justify-between h-16">
-            <div className="flex items-center gap-4">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-12">
+          <div className="flex items-center justify-between h-14 sm:h-16">
+            <div className="flex items-center gap-2 sm:gap-4">
               <Link to="/mekanadmin">
-                <Button variant="ghost" size="icon" className="text-white/70 hover:text-white hover:bg-white/10">
-                  <ArrowLeft className="w-5 h-5" />
+                <Button variant="ghost" size="icon" className="text-white/70 hover:text-white hover:bg-white/10 w-8 h-8 sm:w-10 sm:h-10">
+                  <ArrowLeft className="w-4 h-4 sm:w-5 sm:h-5" />
                 </Button>
               </Link>
-              <div className="flex items-center gap-3">
-                <Shield className="w-8 h-8 text-gold" />
-                <span className="font-heading text-xl font-semibold text-white">Kullanıcılar</span>
+              <div className="flex items-center gap-2 sm:gap-3">
+                <Shield className="w-6 h-6 sm:w-8 sm:h-8 text-gold" />
+                <span className="font-heading text-base sm:text-xl font-semibold text-white">Kullanıcılar</span>
               </div>
             </div>
             
             <Button 
               variant="ghost" 
               onClick={handleLogout}
-              className="text-white/70 hover:text-white hover:bg-white/10"
+              className="text-white/70 hover:text-white hover:bg-white/10 px-2 sm:px-4"
             >
-              <LogOut className="w-4 h-4 mr-2" />
-              Çıkış
+              <LogOut className="w-4 h-4 sm:mr-2" />
+              <span className="hidden sm:inline">Çıkış</span>
             </Button>
           </div>
         </div>
       </header>
 
       {/* Main Content */}
-      <main className="max-w-7xl mx-auto px-6 lg:px-12 py-8">
+      <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-12 py-6 sm:py-8">
         {/* Search and Add */}
-        <div className="flex items-center gap-4 mb-8">
+        <div className="flex flex-col sm:flex-row sm:items-center gap-3 sm:gap-4 mb-6 sm:mb-8">
           <div className="relative flex-1 max-w-md">
             <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-white/40" />
             <Input
               placeholder="Kullanıcı ara..."
               value={search}
               onChange={(e) => setSearch(e.target.value)}
-              className="pl-11 h-12 bg-white/10 border-white/20 text-white placeholder:text-white/40"
+              className="pl-11 h-10 sm:h-12 bg-white/10 border-white/20 text-white placeholder:text-white/40"
             />
           </div>
-          <Badge className="bg-white/10 text-white/70 border-0">
-            {filteredUsers.length} kullanıcı
-          </Badge>
-          
-          <Dialog open={addDialogOpen} onOpenChange={setAddDialogOpen}>
-            <DialogTrigger asChild>
-              <Button className="bg-gold text-white hover:bg-gold/90">
-                <Plus className="w-4 h-4 mr-2" />
-                Kullanıcı Ekle
-              </Button>
-            </DialogTrigger>
+          <div className="flex items-center gap-3">
+            <Badge className="bg-white/10 text-white/70 border-0 text-xs sm:text-sm">
+              {filteredUsers.length} kullanıcı
+            </Badge>
+            
+            <Dialog open={addDialogOpen} onOpenChange={setAddDialogOpen}>
+              <DialogTrigger asChild>
+                <Button className="bg-gold text-white hover:bg-gold/90 text-xs sm:text-sm">
+                  <Plus className="w-4 h-4 sm:mr-2" />
+                  <span className="hidden sm:inline">Kullanıcı Ekle</span>
+                </Button>
+              </DialogTrigger>
             <DialogContent className="max-w-lg">
               <DialogHeader>
                 <DialogTitle>Yeni Kullanıcı Ekle</DialogTitle>
