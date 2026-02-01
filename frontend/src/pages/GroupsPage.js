@@ -126,35 +126,35 @@ export default function GroupsPage() {
     <div className="min-h-screen bg-background">
       {/* Navigation */}
       <nav className="sticky top-0 z-50 glass border-b border-border">
-        <div className="max-w-7xl mx-auto px-6 lg:px-12">
-          <div className="flex items-center justify-between h-20">
-            <Link to="/" className="flex items-center gap-3">
-              <Building2 className="w-8 h-8 text-primary" />
-              <span className="font-heading text-xl font-semibold text-primary">mekan360</span>
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-12">
+          <div className="flex items-center justify-between h-16 sm:h-20">
+            <Link to="/" className="flex items-center gap-2 sm:gap-3">
+              <Building2 className="w-7 h-7 sm:w-8 sm:h-8 text-primary" />
+              <span className="font-heading text-base sm:text-xl font-semibold text-primary">mekan360</span>
             </Link>
             
-            <div className="flex items-center gap-4">
+            <div className="flex items-center gap-1 sm:gap-4">
               <Link to="/dashboard">
-                <Button variant="ghost" size="sm">
-                  <Home className="w-4 h-4 mr-2" />
-                  Dashboard
+                <Button variant="ghost" size="sm" className="px-2 sm:px-4">
+                  <Home className="w-4 h-4 sm:mr-2" />
+                  <span className="hidden sm:inline">Dashboard</span>
                 </Button>
               </Link>
               <Link to="/groups">
-                <Button variant="ghost" size="sm" className="text-primary">
-                  <FolderOpen className="w-4 h-4 mr-2" />
-                  Gruplar
+                <Button variant="ghost" size="sm" className="text-primary px-2 sm:px-4">
+                  <FolderOpen className="w-4 h-4 sm:mr-2" />
+                  <span className="hidden sm:inline">Gruplar</span>
                 </Button>
               </Link>
-              <Link to="/analytics">
+              <Link to="/analytics" className="hidden sm:block">
                 <Button variant="ghost" size="sm">
                   <BarChart3 className="w-4 h-4 mr-2" />
                   Analitik
                 </Button>
               </Link>
-              <Button variant="ghost" size="sm" onClick={logout}>
-                <LogOut className="w-4 h-4 mr-2" />
-                Çıkış
+              <Button variant="ghost" size="sm" onClick={logout} className="px-2 sm:px-4">
+                <LogOut className="w-4 h-4 sm:mr-2" />
+                <span className="hidden sm:inline">Çıkış</span>
               </Button>
             </div>
           </div>
