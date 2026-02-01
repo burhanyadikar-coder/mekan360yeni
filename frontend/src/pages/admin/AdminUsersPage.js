@@ -320,6 +320,7 @@ export default function AdminUsersPage() {
               </form>
             </DialogContent>
           </Dialog>
+          </div>
         </div>
 
         {/* Users List */}
