@@ -161,62 +161,62 @@ export default function GroupDetailPage() {
     <div className="min-h-screen bg-background">
       {/* Navigation */}
       <nav className="sticky top-0 z-50 glass border-b border-border">
-        <div className="max-w-7xl mx-auto px-6 lg:px-12">
-          <div className="flex items-center justify-between h-20">
-            <Link to="/" className="flex items-center gap-3">
-              <Building2 className="w-8 h-8 text-primary" />
-              <span className="font-heading text-xl font-semibold text-primary">mekan360</span>
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-12">
+          <div className="flex items-center justify-between h-16 sm:h-20">
+            <Link to="/" className="flex items-center gap-2 sm:gap-3">
+              <Building2 className="w-7 h-7 sm:w-8 sm:h-8 text-primary" />
+              <span className="font-heading text-base sm:text-xl font-semibold text-primary">mekan360</span>
             </Link>
             
-            <div className="flex items-center gap-4">
+            <div className="flex items-center gap-1 sm:gap-4">
               <Link to="/dashboard">
-                <Button variant="ghost" size="sm">
-                  <Home className="w-4 h-4 mr-2" />
-                  Dashboard
+                <Button variant="ghost" size="sm" className="px-2 sm:px-4">
+                  <Home className="w-4 h-4 sm:mr-2" />
+                  <span className="hidden sm:inline">Dashboard</span>
                 </Button>
               </Link>
               <Link to="/groups">
-                <Button variant="ghost" size="sm" className="text-primary">
-                  <FolderOpen className="w-4 h-4 mr-2" />
-                  Gruplar
+                <Button variant="ghost" size="sm" className="text-primary px-2 sm:px-4">
+                  <FolderOpen className="w-4 h-4 sm:mr-2" />
+                  <span className="hidden sm:inline">Gruplar</span>
                 </Button>
               </Link>
-              <Link to="/analytics">
+              <Link to="/analytics" className="hidden sm:block">
                 <Button variant="ghost" size="sm">
                   <BarChart3 className="w-4 h-4 mr-2" />
                   Analitik
                 </Button>
               </Link>
-              <Button variant="ghost" size="sm" onClick={logout}>
-                <LogOut className="w-4 h-4 mr-2" />
-                Çıkış
+              <Button variant="ghost" size="sm" onClick={logout} className="px-2 sm:px-4">
+                <LogOut className="w-4 h-4 sm:mr-2" />
+                <span className="hidden sm:inline">Çıkış</span>
               </Button>
             </div>
           </div>
         </div>
       </nav>
 
-      <div className="max-w-7xl mx-auto px-6 lg:px-12 py-8">
+      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-12 py-6 sm:py-8">
         {/* Back Button */}
-        <Link to="/groups" className="inline-flex items-center text-muted-foreground hover:text-foreground mb-6">
+        <Link to="/groups" className="inline-flex items-center text-muted-foreground hover:text-foreground mb-4 sm:mb-6 text-sm sm:text-base">
           <ArrowLeft className="w-4 h-4 mr-2" />
           Gruplara Dön
         </Link>
 
         {/* Group Info Card */}
-        <Card className="mb-8">
-          <CardHeader>
-            <div className="flex items-center justify-between">
-              <CardTitle className="text-2xl">{group?.name}</CardTitle>
+        <Card className="mb-6 sm:mb-8">
+          <CardHeader className="p-4 sm:p-6">
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+              <CardTitle className="text-xl sm:text-2xl">{group?.name}</CardTitle>
               <div className="flex items-center gap-2">
-                <Button variant="outline" size="sm" onClick={copyShareLink}>
-                  <Copy className="w-4 h-4 mr-2" />
-                  Linki Kopyala
+                <Button variant="outline" size="sm" onClick={copyShareLink} className="text-xs sm:text-sm">
+                  <Copy className="w-4 h-4 sm:mr-2" />
+                  <span className="hidden sm:inline">Linki Kopyala</span>
                 </Button>
                 <Link to={group?.share_link} target="_blank">
-                  <Button variant="outline" size="sm">
-                    <ExternalLink className="w-4 h-4 mr-2" />
-                    Önizle
+                  <Button variant="outline" size="sm" className="text-xs sm:text-sm">
+                    <ExternalLink className="w-4 h-4 sm:mr-2" />
+                    <span className="hidden sm:inline">Önizle</span>
                   </Button>
                 </Link>
               </div>
