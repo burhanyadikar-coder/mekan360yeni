@@ -88,7 +88,7 @@ export default function LandingPage() {
       </nav>
 
       {/* Hero Section */}
-      <section className="relative min-h-screen flex items-center pt-20">
+      <section className="relative min-h-screen flex items-center pt-16 sm:pt-20">
         <div 
           className="absolute inset-0 bg-cover bg-center"
           style={{ backgroundImage: `url('https://images.unsplash.com/photo-1758957530781-4ff54e09bee2?crop=entropy&cs=srgb&fm=jpg&q=85')` }}
@@ -96,22 +96,22 @@ export default function LandingPage() {
           <div className="absolute inset-0 hero-overlay" />
         </div>
         
-        <div className="relative z-10 max-w-7xl mx-auto px-6 lg:px-12 py-24">
-          <div className="grid lg:grid-cols-12 gap-12 items-center">
-            <div className="lg:col-span-7 space-y-8">
+        <div className="relative z-10 max-w-7xl mx-auto px-4 sm:px-6 lg:px-12 py-12 sm:py-24">
+          <div className="grid lg:grid-cols-12 gap-8 lg:gap-12 items-center">
+            <div className="lg:col-span-7 space-y-4 sm:space-y-8">
               <div className="animate-fade-in opacity-0">
-                <span className="inline-block px-4 py-2 bg-white/10 backdrop-blur-sm text-white/90 text-sm font-medium tracking-wider uppercase rounded-full border border-white/20">
+                <span className="inline-block px-3 sm:px-4 py-1.5 sm:py-2 bg-white/10 backdrop-blur-sm text-white/90 text-xs sm:text-sm font-medium tracking-wider uppercase rounded-full border border-white/20">
                   Premium Gayrimenkul Deneyimi
                 </span>
               </div>
               
-              <h1 className="font-heading text-5xl md:text-7xl font-light tracking-tight text-white animate-fade-in opacity-0 stagger-1">
+              <h1 className="font-heading text-3xl sm:text-5xl md:text-7xl font-light tracking-tight text-white animate-fade-in opacity-0 stagger-1">
                 Dairelerinizi<br />
                 <span className="font-semibold text-gold">Premium</span> Seviyede<br />
                 Tanıtın
               </h1>
               
-              <p className="text-lg md:text-xl text-white/80 max-w-xl leading-relaxed animate-fade-in opacity-0 stagger-2">
+              <p className="text-sm sm:text-lg md:text-xl text-white/80 max-w-xl leading-relaxed animate-fade-in opacity-0 stagger-2">
                 360° sanal turlar, güneş simülasyonu ve detaylı analitiklerle gayrimenkul satışlarınızı hızlandırın.
               </p>
               
