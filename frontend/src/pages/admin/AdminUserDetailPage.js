@@ -210,6 +210,7 @@ export default function AdminUserDetailPage() {
                       <SelectValue />
                     </SelectTrigger>
                     <SelectContent>
+                      <SelectItem value="free">Ücretsiz</SelectItem>
                       <SelectItem value="starter">Başlangıç (₺700/ay)</SelectItem>
                       <SelectItem value="premium">Premium (₺1.000/ay)</SelectItem>
                       <SelectItem value="ultra">Ultra (₺2.000/ay)</SelectItem>
