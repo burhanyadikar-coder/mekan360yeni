@@ -244,14 +244,14 @@ export default function PropertyDetailPage() {
         </div>
       </header>
 
-      {/* 360 Panorama Section */}
-      {property.panorama_image && (
+      {/* 360 Panorama Section - Using rooms data */}
+      {property.view_type === '360' && property.rooms?.some(r => r.panorama_photo) && (
         <section className="relative" data-testid="panorama-section">
           <div className="panorama-container sun-filter" style={{ filter: getSunFilter() }}>
             <Pannellum
               width="100%"
               height="100%"
-              image={property.panorama_image}
+              image={property.rooms[selectedRoomIndex]?.panorama_photo || property.rooms.find(r => r.panorama_photo)?.panorama_photo}
               pitch={0}
               yaw={0}
               hfov={110}
@@ -261,6 +261,23 @@ export default function PropertyDetailPage() {
               showZoomCtrl={true}
               showFullscreenCtrl={true}
             />
+          </div>
+
+          {/* Room selector for 360 */}
+          <div className="absolute bottom-4 left-4 right-4 flex flex-wrap gap-2 justify-center">
+            {property.rooms.filter(r => r.panorama_photo).map((room, idx) => (
+              <button
+                key={room.id}
+                onClick={() => setSelectedRoomIndex(property.rooms.indexOf(room))}
+                className={`px-4 py-2 rounded-full text-sm font-medium transition-all ${
+                  property.rooms.indexOf(room) === selectedRoomIndex
+                    ? 'bg-amber-500 text-white'
+                    : 'bg-black/50 text-white hover:bg-black/70'
+                }`}
+              >
+                {room.name || ROOM_NAMES[room.room_type] || 'Oda'}
+              </button>
+            ))}
           </div>
 
           {/* Sun Simulation Overlay */}
