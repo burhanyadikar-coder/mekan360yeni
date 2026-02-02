@@ -28,7 +28,6 @@ import {
   Info,
   Grid3X3
 } from 'lucide-react';
-import { Pannellum } from 'pannellum-react';
 import axios from 'axios';
 import { toast } from 'sonner';
 
