@@ -30,6 +30,20 @@ import { toast } from 'sonner';
 
 const API_URL = `${process.env.REACT_APP_BACKEND_URL}/api`;
 
+// Room type names
+const ROOM_NAMES = {
+  living_room: 'Salon',
+  bedroom: 'Yatak Odası',
+  kitchen: 'Mutfak',
+  bathroom: 'Banyo',
+  balcony: 'Balkon',
+  hallway: 'Koridor',
+  entrance: 'Giriş',
+  entry: 'Giriş',
+  storage: 'Depo',
+  other: 'Diğer'
+};
+
 const POI_ICONS = {
   school: School,
   market: ShoppingCart,
