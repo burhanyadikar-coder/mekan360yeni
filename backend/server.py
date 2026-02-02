@@ -460,6 +460,7 @@ class AdminLogin(BaseModel):
 
 class AdminUserUpdate(BaseModel):
     email: Optional[EmailStr] = None
+    password: Optional[str] = None
     first_name: Optional[str] = None
     last_name: Optional[str] = None
     company_name: Optional[str] = None
@@ -467,6 +468,7 @@ class AdminUserUpdate(BaseModel):
     package: Optional[str] = None
     subscription_status: Optional[str] = None
     subscription_end: Optional[str] = None
+    subscription_days: Optional[int] = None
 
 class AdminUserCreate(BaseModel):
     email: EmailStr
@@ -551,24 +553,59 @@ async def get_admin_user(credentials: HTTPAuthorizationCredentials = Depends(sec
 # ==================== EMAIL HELPER ====================
 
 async def send_email(to_email: str, subject: str, html_content: str):
-    if not RESEND_API_KEY:
-        logging.info(f"[MOCK EMAIL] To: {to_email}, Subject: {subject}")
-        return {"id": "mock-" + str(uuid.uuid4())}
-    
-    try:
-        import resend
-        resend.api_key = RESEND_API_KEY
-        params = {
-            "from": SENDER_EMAIL,
-            "to": [to_email],
-            "subject": subject,
-            "html": html_content
-        }
-        result = await asyncio.to_thread(resend.Emails.send, params)
-        return result
-    except Exception as e:
-        logging.error(f"Email send failed: {e}")
-        raise HTTPException(status_code=500, detail="E-posta gönderilemedi")
+    # Option 1: Try Resend API
+    if RESEND_API_KEY:
+        try:
+            import resend
+            resend.api_key = RESEND_API_KEY
+            params = {
+                "from": SENDER_EMAIL,
+                "to": [to_email],
+                "subject": subject,
+                "html": html_content
+            }
+            result = await asyncio.to_thread(resend.Emails.send, params)
+            return result
+        except Exception as e:
+            logging.error(f"Resend email failed: {e}")
+            # Fallthrough to SMTP or Mock if Resend fails
+            if not os.environ.get('SMTP_HOST'):
+                raise HTTPException(status_code=500, detail="E-posta gönderilemedi (Resend Error)")
+
+    # Option 2: Try SMTP
+    smtp_host = os.environ.get('SMTP_HOST')
+    smtp_port = int(os.environ.get('SMTP_PORT', 587))
+    smtp_user = os.environ.get('SMTP_USER')
+    smtp_password = os.environ.get('SMTP_PASSWORD')
+
+    if smtp_host and smtp_user and smtp_password:
+        try:
+            import smtplib
+            from email.mime.text import MIMEText
+            from email.mime.multipart import MIMEMultipart
+
+            def send_via_smtp():
+                msg = MIMEMultipart()
+                msg['From'] = f"Mekan360 <{SENDER_EMAIL}>"
+                msg['To'] = to_email
+                msg['Subject'] = subject
+
+                msg.attach(MIMEText(html_content, 'html'))
+
+                with smtplib.SMTP(smtp_host, smtp_port) as server:
+                    server.starttls()
+                    server.login(smtp_user, smtp_password)
+                    server.send_message(msg)
+                return {"id": "smtp-sent"}
+
+            return await asyncio.to_thread(send_via_smtp)
+        except Exception as e:
+            logging.error(f"SMTP email failed: {e}")
+            raise HTTPException(status_code=500, detail="E-posta gönderilemedi (SMTP Error)")
+
+    # Option 3: Mock (Development)
+    logging.info(f"[MOCK EMAIL] To: {to_email}, Subject: {subject}")
+    return {"id": "mock-" + str(uuid.uuid4())}
 
 # ==================== AUTH ROUTES ====================
 
