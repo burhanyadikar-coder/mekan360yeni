@@ -121,10 +121,47 @@ export default function PropertyViewPage() {
   
   const viewStartTime = useRef(null);
   const visitedRooms = useRef([]);
+  const pannellumRef = useRef(null);
+  const viewerRef = useRef(null);
 
   useEffect(() => {
     fetchProperty();
   }, [id]);
+
+  // Pannellum viewer initialization and cleanup
+  useEffect(() => {
+    const currentRoom = property?.rooms?.[currentRoomIndex];
+    const has360View = property?.view_type === '360' && currentRoom?.panorama_photo;
+    
+    if (has360View && pannellumRef.current && window.pannellum && !showVisitorForm) {
+      // Destroy existing viewer
+      if (viewerRef.current) {
+        viewerRef.current.destroy();
+        viewerRef.current = null;
+      }
+      
+      // Create new viewer
+      viewerRef.current = window.pannellum.viewer(pannellumRef.current, {
+        type: 'equirectangular',
+        panorama: currentRoom.panorama_photo,
+        autoLoad: true,
+        showZoomCtrl: false,
+        showFullscreenCtrl: false,
+        mouseZoom: true,
+        compass: true,
+        hfov: 110,
+        pitch: 0,
+        yaw: 0
+      });
+    }
+    
+    return () => {
+      if (viewerRef.current) {
+        viewerRef.current.destroy();
+        viewerRef.current = null;
+      }
+    };
+  }, [property, currentRoomIndex, showVisitorForm]);
 
   useEffect(() => {
     if (visitor && !viewStartTime.current) {
