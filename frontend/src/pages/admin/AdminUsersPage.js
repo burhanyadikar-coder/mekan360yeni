@@ -26,6 +26,7 @@ import axios from 'axios';
 const API_URL = `${process.env.REACT_APP_BACKEND_URL}/api`;
 
 const PACKAGES = {
+  free: { name: 'Ücretsiz', price: 0 },
   starter: { name: 'Başlangıç', price: 700 },
   premium: { name: 'Premium', price: 1000 },
   ultra: { name: 'Ultra', price: 2000 }
