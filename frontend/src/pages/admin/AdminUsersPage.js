@@ -127,6 +127,28 @@ export default function AdminUsersPage() {
     }
   };
 
+  const handleDeleteUser = async () => {
+    if (!userToDelete) return;
+    
+    setDeleting(true);
+    try {
+      await axios.delete(`${API_URL}/admin/users/${userToDelete.id}`);
+      toast.success('Kullanıcı başarıyla silindi');
+      setDeleteDialogOpen(false);
+      setUserToDelete(null);
+      fetchUsers();
+    } catch (error) {
+      toast.error(error.response?.data?.detail || 'Kullanıcı silinemedi');
+    } finally {
+      setDeleting(false);
+    }
+  };
+
+  const openDeleteDialog = (user) => {
+    setUserToDelete(user);
+    setDeleteDialogOpen(true);
+  };
+
   const getRemainingDays = (endDate) => {
     if (!endDate) return null;
     const end = new Date(endDate);
