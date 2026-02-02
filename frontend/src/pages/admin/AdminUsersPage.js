@@ -418,11 +418,21 @@ export default function AdminUsersPage() {
                         <p className="text-white font-medium mt-1">{user.property_count || 0}</p>
                       </div>
                       
-                      <Link to={`/mekanadmin/users/${user.id}`}>
-                        <Button variant="ghost" size="icon" className="text-white/50 hover:text-white hover:bg-white/10">
-                          <ChevronRight className="w-5 h-5" />
+                      <div className="flex items-center gap-1">
+                        <Link to={`/mekanadmin/users/${user.id}`}>
+                          <Button variant="ghost" size="icon" className="text-white/50 hover:text-white hover:bg-white/10">
+                            <ChevronRight className="w-5 h-5" />
+                          </Button>
+                        </Link>
+                        <Button 
+                          variant="ghost" 
+                          size="icon" 
+                          className="text-red-400/50 hover:text-red-400 hover:bg-red-500/10"
+                          onClick={() => openDeleteDialog(user)}
+                        >
+                          <Trash2 className="w-4 h-4" />
                         </Button>
-                      </Link>
+                      </div>
                     </div>
                   </div>
                 </CardContent>
@@ -430,6 +440,36 @@ export default function AdminUsersPage() {
             );
           })}
         </div>
+
+        {/* Delete Confirmation Dialog */}
+        <Dialog open={deleteDialogOpen} onOpenChange={setDeleteDialogOpen}>
+          <DialogContent className="max-w-md">
+            <DialogHeader>
+              <DialogTitle className="text-red-500">Kullanıcı Sil</DialogTitle>
+            </DialogHeader>
+            <div className="py-4">
+              <p className="text-gray-600">
+                <strong>{userToDelete?.first_name} {userToDelete?.last_name}</strong> adlı kullanıcıyı silmek istediğinize emin misiniz?
+              </p>
+              <p className="text-sm text-gray-500 mt-2">
+                Bu işlem geri alınamaz. Kullanıcının tüm gayrimenkulleri, grupları ve verileri kalıcı olarak silinecektir.
+              </p>
+            </div>
+            <div className="flex justify-end gap-2">
+              <Button variant="outline" onClick={() => setDeleteDialogOpen(false)}>
+                İptal
+              </Button>
+              <Button 
+                variant="destructive" 
+                onClick={handleDeleteUser}
+                disabled={deleting}
+                className="bg-red-500 hover:bg-red-600"
+              >
+                {deleting ? 'Siliniyor...' : 'Kullanıcıyı Sil'}
+              </Button>
+            </div>
+          </DialogContent>
+        </Dialog>
 
         {filteredUsers.length === 0 && (
           <div className="text-center py-12">
