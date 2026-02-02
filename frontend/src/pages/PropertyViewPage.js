@@ -722,18 +722,10 @@ export default function PropertyViewPage() {
             {has360 ? (
               <div className="w-full h-full relative">
                 <div style={{ filter: sunFilterStyle.filter }} className="w-full h-full">
-                  <Pannellum
-                    width="100%"
-                    height="100%"
-                    image={currentRoom.panorama_photo}
-                    pitch={0}
-                    yaw={0}
-                    hfov={110}
-                    autoLoad
-                    showZoomCtrl={false}
-                    showFullscreenCtrl={false}
-                    mouseZoom={true}
-                    compass={true}
+                  <div 
+                    ref={pannellumRef}
+                    id="panorama-viewer"
+                    style={{ width: '100%', height: '100%' }}
                   />
                 </div>
                 
