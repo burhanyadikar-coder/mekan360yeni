@@ -19,7 +19,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from '../../components/ui/select';
-import { Shield, Users, Search, ArrowLeft, ChevronRight, LogOut, Plus, Calendar, Building2, Phone, Mail } from 'lucide-react';
+import { Shield, Users, Search, ArrowLeft, ChevronRight, LogOut, Plus, Calendar, Building2, Phone, Mail, Trash2 } from 'lucide-react';
 import { toast } from 'sonner';
 import axios from 'axios';
 
