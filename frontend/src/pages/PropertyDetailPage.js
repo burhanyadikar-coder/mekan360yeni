@@ -554,18 +554,26 @@ export default function PropertyDetailPage() {
           onClick={() => setSelectedImage(null)}
           data-testid="image-modal"
         >
-          <img
-            src={selectedImage}
-            alt="Full size"
-            className="max-w-full max-h-full object-contain"
-          />
+          <div className="relative">
+            <img
+              src={selectedImage}
+              alt="Full size"
+              className="max-w-full max-h-full object-contain"
+            />
+            {/* Watermark on Modal */}
+            <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 pointer-events-none">
+              <p className="text-white/25 text-3xl md:text-5xl font-bold tracking-wider select-none" style={{ textShadow: '2px 2px 4px rgba(0,0,0,0.5)' }}>
+                {property.company_name}
+              </p>
+            </div>
+          </div>
           <Button
             variant="ghost"
             size="icon"
             className="absolute top-4 right-4 text-white hover:bg-white/20"
             onClick={() => setSelectedImage(null)}
           >
-            <ArrowLeft className="w-6 h-6" />
+            <X className="w-6 h-6" />
           </Button>
         </div>
       )}
