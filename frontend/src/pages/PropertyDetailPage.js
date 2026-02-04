@@ -124,18 +124,22 @@ export default function PropertyDetailPage() {
   };
 
   const handleCopyLink = () => {
-    const fullUrl = window.location.href;
-    navigator.clipboard.writeText(fullUrl);
-    toast.success('Link kopyalandı');
+    // Müşteri görünüm linkini oluştur (/view/ ile)
+    const viewUrl = `${window.location.origin}/view/${id}`;
+    navigator.clipboard.writeText(viewUrl);
+    toast.success('Müşteri linki kopyalandı');
   };
 
   const handleShare = async () => {
+    // Müşteri görünüm linkini oluştur (/view/ ile)
+    const viewUrl = `${window.location.origin}/view/${id}`;
+    
     if (navigator.share) {
       try {
         await navigator.share({
           title: property?.title,
           text: `${property?.title} - ${property?.district}, ${property?.city}`,
-          url: window.location.href,
+          url: viewUrl,
         });
       } catch (error) {
         handleCopyLink();
