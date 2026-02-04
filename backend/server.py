@@ -306,6 +306,8 @@ class UserResponse(BaseModel):
     last_name: str
     company_name: str
     phone: Optional[str] = None
+    profile_photo: Optional[str] = None  # Emlakçı profil fotoğrafı
+    company_logo: Optional[str] = None   # Şirket logosu
     package: str
     package_name: str
     property_limit: int
@@ -342,6 +344,13 @@ class PaymentResponse(BaseModel):
     payment_date: str
     next_payment_date: Optional[str] = None
 
+# Hotspot modeli (360 görünümde oda bağlantıları için)
+class HotspotData(BaseModel):
+    target_room_id: str
+    yaw: float = 0  # Yatay açı (-180 ile 180 arası)
+    pitch: float = -10  # Dikey açı
+    label: Optional[str] = None  # Özel etiket
+
 # Room/Floor Models for Mapping System
 class RoomData(BaseModel):
     id: str
@@ -355,6 +364,7 @@ class RoomData(BaseModel):
     photos: List[str] = []  # base64 encoded
     panorama_photo: Optional[str] = None  # for 360
     connections: List[str] = []  # connected room IDs
+    hotspots: List[HotspotData] = []  # 360 view hotspots for room transitions
 
 class PropertyCreate(BaseModel):
     title: str
@@ -400,6 +410,16 @@ class PropertyUpdate(BaseModel):
     pois: Optional[List[Dict]] = None
     cover_image: Optional[str] = None
 
+class AgentInfo(BaseModel):
+    """Emlakçı bilgileri - public görünüm için"""
+    first_name: str
+    last_name: str
+    company_name: str
+    phone: Optional[str] = None
+    email: Optional[str] = None
+    profile_photo: Optional[str] = None
+    company_logo: Optional[str] = None
+
 class PropertyResponse(BaseModel):
     id: str
     user_id: str
@@ -429,6 +449,7 @@ class PropertyResponse(BaseModel):
     created_at: str
     updated_at: str
     share_link: str
+    agent: Optional[AgentInfo] = None  # Emlakçı bilgileri
 
 class VisitorCreate(BaseModel):
     property_id: str
@@ -789,6 +810,8 @@ async def get_me(current_user: dict = Depends(get_current_user)):
         last_name=current_user["last_name"],
         company_name=current_user["company_name"],
         phone=current_user.get("phone"),
+        profile_photo=current_user.get("profile_photo"),
+        company_logo=current_user.get("company_logo"),
         package=current_user["package"],
         package_name=package_info["name"],
         property_limit=package_info["property_limit"],
@@ -798,6 +821,73 @@ async def get_me(current_user: dict = Depends(get_current_user)):
         subscription_end=current_user.get("subscription_end"),
         auto_payment=current_user.get("auto_payment", False),
         created_at=current_user["created_at"]
+    )
+
+class ProfileUpdate(BaseModel):
+    first_name: Optional[str] = None
+    last_name: Optional[str] = None
+    company_name: Optional[str] = None
+    phone: Optional[str] = None
+    profile_photo: Optional[str] = None  # Base64 encoded
+    company_logo: Optional[str] = None   # Base64 encoded
+
+@api_router.put("/auth/profile", response_model=UserResponse)
+async def update_profile(profile_data: ProfileUpdate, current_user: dict = Depends(get_current_user)):
+    """Kullanıcı profil bilgilerini güncelle"""
+    update_data = {k: v for k, v in profile_data.model_dump().items() if v is not None}
+    
+    if not update_data:
+        raise HTTPException(status_code=400, detail="Güncellenecek veri yok")
+    
+    # Upload images to Bunny CDN
+    if BUNNY_ENABLED:
+        if update_data.get('profile_photo') and update_data['profile_photo'].startswith('data:'):
+            cdn_url = await upload_base64_to_bunny(
+                update_data['profile_photo'],
+                f"users/{current_user['id']}",
+                "profile.jpg"
+            )
+            if cdn_url:
+                update_data['profile_photo'] = cdn_url
+        
+        if update_data.get('company_logo') and update_data['company_logo'].startswith('data:'):
+            cdn_url = await upload_base64_to_bunny(
+                update_data['company_logo'],
+                f"users/{current_user['id']}",
+                "logo.png"
+            )
+            if cdn_url:
+                update_data['company_logo'] = cdn_url
+    else:
+        # Compress images if Bunny not enabled
+        if update_data.get('profile_photo'):
+            update_data['profile_photo'] = compress_base64_image(update_data['profile_photo'], max_size_kb=200)
+        if update_data.get('company_logo'):
+            update_data['company_logo'] = compress_base64_image(update_data['company_logo'], max_size_kb=200)
+    
+    await db.users.update_one({"id": current_user["id"]}, {"$set": update_data})
+    
+    updated_user = await db.users.find_one({"id": current_user["id"]}, {"_id": 0, "password": 0})
+    package_info = PACKAGES[updated_user["package"]]
+    
+    return UserResponse(
+        id=updated_user["id"],
+        email=updated_user["email"],
+        first_name=updated_user["first_name"],
+        last_name=updated_user["last_name"],
+        company_name=updated_user["company_name"],
+        phone=updated_user.get("phone"),
+        profile_photo=updated_user.get("profile_photo"),
+        company_logo=updated_user.get("company_logo"),
+        package=updated_user["package"],
+        package_name=package_info["name"],
+        property_limit=package_info["property_limit"],
+        property_count=updated_user.get("property_count", 0),
+        has_360=package_info["has_360"],
+        subscription_status=updated_user["subscription_status"],
+        subscription_end=updated_user.get("subscription_end"),
+        auto_payment=updated_user.get("auto_payment", False),
+        created_at=updated_user["created_at"]
     )
 
 @api_router.post("/auth/forgot-password")
@@ -971,6 +1061,20 @@ async def get_property(property_id: str):
     property_doc = await db.properties.find_one({"id": property_id}, {"_id": 0})
     if not property_doc:
         raise HTTPException(status_code=404, detail="Gayrimenkul bulunamadı")
+    
+    # Emlakçı bilgilerini ekle
+    user_doc = await db.users.find_one({"id": property_doc["user_id"]}, {"_id": 0, "password": 0})
+    if user_doc:
+        property_doc["agent"] = AgentInfo(
+            first_name=user_doc.get("first_name", ""),
+            last_name=user_doc.get("last_name", ""),
+            company_name=user_doc.get("company_name", ""),
+            phone=user_doc.get("phone"),
+            email=user_doc.get("email"),
+            profile_photo=user_doc.get("profile_photo"),
+            company_logo=user_doc.get("company_logo")
+        )
+    
     return PropertyResponse(**property_doc)
 
 @api_router.put("/properties/{property_id}", response_model=PropertyResponse)

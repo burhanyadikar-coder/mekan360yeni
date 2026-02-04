@@ -30,6 +30,7 @@ import {
 } from 'lucide-react';
 import axios from 'axios';
 import { toast } from 'sonner';
+import VirtualTourViewer from '../components/VirtualTourViewer';
 
 const API_URL = `${process.env.REACT_APP_BACKEND_URL}/api`;
 
@@ -121,47 +122,12 @@ export default function PropertyViewPage() {
   
   const viewStartTime = useRef(null);
   const visitedRooms = useRef([]);
-  const pannellumRef = useRef(null);
-  const viewerRef = useRef(null);
 
   useEffect(() => {
     fetchProperty();
   }, [id]);
 
-  // Pannellum viewer initialization and cleanup
-  useEffect(() => {
-    const currentRoom = property?.rooms?.[currentRoomIndex];
-    const has360View = property?.view_type === '360' && currentRoom?.panorama_photo;
-    
-    if (has360View && pannellumRef.current && window.pannellum && !showVisitorForm) {
-      // Destroy existing viewer
-      if (viewerRef.current) {
-        viewerRef.current.destroy();
-        viewerRef.current = null;
-      }
-      
-      // Create new viewer
-      viewerRef.current = window.pannellum.viewer(pannellumRef.current, {
-        type: 'equirectangular',
-        panorama: currentRoom.panorama_photo,
-        autoLoad: true,
-        showZoomCtrl: false,
-        showFullscreenCtrl: false,
-        mouseZoom: true,
-        compass: true,
-        hfov: 110,
-        pitch: 0,
-        yaw: 0
-      });
-    }
-    
-    return () => {
-      if (viewerRef.current) {
-        viewerRef.current.destroy();
-        viewerRef.current = null;
-      }
-    };
-  }, [property, currentRoomIndex, showVisitorForm]);
+  // Note: Pannellum viewer is now managed by VirtualTourViewer component
 
   useEffect(() => {
     if (visitor && !viewStartTime.current) {
@@ -756,82 +722,11 @@ export default function PropertyViewPage() {
             )}
 
             {has360 ? (
-              <div className="w-full h-full relative">
-                <div style={{ filter: sunFilterStyle.filter }} className="w-full h-full">
-                  <div 
-                    ref={pannellumRef}
-                    id="panorama-viewer"
-                    style={{ width: '100%', height: '100%' }}
-                  />
-                </div>
-                
-                {/* Company Watermark */}
-                <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 pointer-events-none z-10">
-                  <p className="text-white/20 text-2xl md:text-4xl font-bold tracking-wider select-none" style={{ textShadow: '2px 2px 4px rgba(0,0,0,0.3)' }}>
-                    {property.company_name}
-                  </p>
-                </div>
-                
-                {/* Sun light overlay effect for 360 */}
-                {sunFilterStyle.isLit && (
-                  <div 
-                    className="absolute inset-0 pointer-events-none transition-opacity duration-500"
-                    style={{
-                      background: `radial-gradient(ellipse at ${sunTime[0] < 12 ? '80% 20%' : sunTime[0] > 16 ? '20% 30%' : '50% 10%'}, 
-                        rgba(255, 200, 100, ${0.1 + sunFilterStyle.intensity * 0.15}) 0%, 
-                        transparent 50%)`,
-                    }}
-                  />
-                )}
-                
-                {/* Room Navigation Arrows */}
-                {property.rooms?.length > 1 && (
-                  <>
-                    {/* Previous Room */}
-                    {currentRoomIndex > 0 && (
-                      <button
-                        onClick={() => handleRoomChange(currentRoomIndex - 1)}
-                        className="absolute left-4 top-1/2 -translate-y-1/2 z-30 flex items-center gap-2 bg-black/60 hover:bg-black/80 text-white px-4 py-3 rounded-full transition-all group"
-                      >
-                        <ChevronLeft className="w-6 h-6" />
-                        <span className="hidden group-hover:inline text-sm font-medium max-w-32 truncate">
-                          {property.rooms[currentRoomIndex - 1]?.name || ROOM_NAMES[property.rooms[currentRoomIndex - 1]?.room_type]}
-                        </span>
-                      </button>
-                    )}
-                    
-                    {/* Next Room */}
-                    {currentRoomIndex < property.rooms.length - 1 && (
-                      <button
-                        onClick={() => handleRoomChange(currentRoomIndex + 1)}
-                        className="absolute right-4 top-1/2 -translate-y-1/2 z-30 flex items-center gap-2 bg-black/60 hover:bg-black/80 text-white px-4 py-3 rounded-full transition-all group"
-                      >
-                        <span className="hidden group-hover:inline text-sm font-medium max-w-32 truncate">
-                          {property.rooms[currentRoomIndex + 1]?.name || ROOM_NAMES[property.rooms[currentRoomIndex + 1]?.room_type]}
-                        </span>
-                        <ChevronRight className="w-6 h-6" />
-                      </button>
-                    )}
-                  </>
-                )}
-                
-                {/* Current Room Indicator */}
-                <div className="absolute bottom-4 left-1/2 -translate-x-1/2 z-30 bg-black/60 backdrop-blur px-4 py-2 rounded-full">
-                  <div className="flex items-center gap-3">
-                    <span className="text-blue-400 text-lg">{ROOM_ICONS[currentRoom?.room_type] || '📍'}</span>
-                    <span className="text-white font-medium">
-                      {currentRoom?.name || ROOM_NAMES[currentRoom?.room_type]}
-                    </span>
-                    <span className="text-white/50 text-sm">
-                      {currentRoomIndex + 1} / {property.rooms?.length}
-                    </span>
-                  </div>
-                </div>
-                
-                <Badge className="absolute bottom-4 left-4 bg-blue-500 text-white z-20">
-                  360° Sanal Tur
-                </Badge>
-              </div>
+              <VirtualTourViewer
+                property={property}
+                currentRoomIndex={currentRoomIndex}
+                onRoomChange={handleRoomChange}
+              />
             ) : hasPhotos ? (
               <div className="relative w-full h-full overflow-hidden bg-black">
                 {/* Company Watermark for Photos */}
