@@ -1,3 +1,29 @@
+#!/usr/bin/env bash
+set -e
+# Simple wrapper to run backend and frontend deploy scripts.
+# Update APP_DIR if your deployment path differs.
+
+APP_DIR="/var/www/mekan360"
+BACKEND_SCRIPT="$APP_DIR/deploy_backend.sh"
+FRONTEND_SCRIPT="$APP_DIR/deploy_frontend.sh"
+
+echo "Running deploy wrapper (APP_DIR=$APP_DIR)"
+
+if [ -f "$BACKEND_SCRIPT" ]; then
+  echo "Running backend deploy"
+  sudo bash "$BACKEND_SCRIPT"
+else
+  echo "Backend deploy script not found at $BACKEND_SCRIPT"
+fi
+
+if [ -f "$FRONTEND_SCRIPT" ]; then
+  echo "Running frontend deploy"
+  sudo bash "$FRONTEND_SCRIPT"
+else
+  echo "Frontend deploy script not found at $FRONTEND_SCRIPT"
+fi
+
+echo "Deploy wrapper finished."
 #!/bin/bash
 
 #============================================
