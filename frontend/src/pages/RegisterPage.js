@@ -92,9 +92,31 @@ export default function RegisterPage() {
       return false;
     }
     if (!formData.company_name) {
-      toast.error('Lütfen şirket adı girin');
-      return false;
-    }
+
+              {/* Agreement checkboxes (required) */}
+              <Card className="border-border/40">
+                <CardContent className="p-6">
+                  <div className="flex flex-col gap-3">
+                    <label className="flex items-start gap-3">
+                      <Checkbox name="agree_terms" checked={formData.agree_terms} onChange={handleChange} />
+                      <div className="text-sm">
+                        <div>Kullanıcı Sözleşmesini ve Hizmet Koşullarını okudum ve kabul ediyorum.</div>
+                        <a href="/user-agreement.html" target="_blank" rel="noreferrer" className="text-primary underline text-sm">Sözleşmeyi oku</a>
+                      </div>
+                    </label>
+                    <label className="flex items-start gap-3">
+                      <Checkbox name="agree_kvkk" checked={formData.agree_kvkk} onChange={handleChange} />
+                      <div className="text-sm">
+                        <div>Kişisel Verilerin Korunması Kanunu (KVKK) kapsamında bilgilendirildim ve onay veriyorum.</div>
+                        <a href="/kvkk.html" target="_blank" rel="noreferrer" className="text-primary underline text-sm">KVKK metnini oku</a>
+                      </div>
+                    </label>
+                  </div>
+                </CardContent>
+              </Card>
+
+              {/* Action Buttons */}
+              <div className="flex gap-4">
     if (!formData.email) {
       toast.error('Lütfen e-posta girin');
       return false;
@@ -116,10 +138,6 @@ export default function RegisterPage() {
       toast.error('Şifreler eşleşmiyor');
       return false;
     }
-    if (!formData.agree_terms || !formData.agree_kvkk) {
-      toast.error('Kullanıcı sözleşmesi ve KVKK kabul edilmelidir');
-      return false;
-    }
     return true;
   };
 
@@ -132,6 +150,13 @@ export default function RegisterPage() {
   const handleSubmit = async (e) => {
     e.preventDefault();
     setLoading(true);
+
+    // Agreements must be accepted before submitting
+    if (!formData.agree_terms || !formData.agree_kvkk) {
+      toast.error('Kullanıcı sözleşmesi ve KVKK kabul edilmelidir');
+      setLoading(false);
+      return;
+    }
 
     try {
       const response = await axios.post(`${API_URL}/auth/register`, {
@@ -187,9 +212,7 @@ export default function RegisterPage() {
             <span className="font-heading text-2xl font-semibold text-primary">mekan360</span>
           </Link>
           
-          <h1 className="font-heading text-3xl md:text-4xl font-semibold text-primary mb-2">
-            {isFreePackage ? 'Ücretsiz Kayıt Ol' : 'Kayıt Ol'}
-          </h1>
+          <h1 className="font-heading text-3xl md:text-4xl font-semibold text-primary mb-2">Kayıt Ol</h1>
           <p className="text-muted-foreground">
             {step === 1 ? 'Bilgilerinizi girin' : 'Paketinizi seçin'}
           </p>
@@ -260,16 +283,7 @@ export default function RegisterPage() {
                   </div>
                 </div>
 
-                <div className="flex flex-col gap-3">
-                  <label className="flex items-center gap-2">
-                    <Checkbox name="agree_terms" checked={formData.agree_terms} onChange={handleChange} />
-                    <span className="text-sm">Kullanıcı sözleşmesini okudum ve kabul ediyorum</span>
-                  </label>
-                  <label className="flex items-center gap-2">
-                    <Checkbox name="agree_kvkk" checked={formData.agree_kvkk} onChange={handleChange} />
-                    <span className="text-sm">Kişisel Verilerin Korunması Kanunu (KVKK) kapsamında bilgilendirildim ve onay veriyorum</span>
-                  </label>
-                </div>
+                
 
                 <div className="space-y-2">
                   <Label htmlFor="company_name">Şirket / Firma Adı *</Label>
