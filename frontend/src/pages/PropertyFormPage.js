@@ -188,8 +188,8 @@ export default function PropertyFormPage() {
   const handleCoverUpload = (e) => {
     const file = e.target.files?.[0];
     if (file) {
-      if (file.size > 5 * 1024 * 1024) {
-        toast.error('Görsel 5MB\'dan küçük olmalı');
+      if (file.size > 20 * 1024 * 1024) {
+        toast.error('Görsel 20MB\'dan küçük olmalı');
         return;
       }
       const reader = new FileReader();
@@ -231,8 +231,8 @@ export default function PropertyFormPage() {
     const files = Array.from(e.target.files || []);
     
     files.forEach(file => {
-      if (file.size > 10 * 1024 * 1024) {
-        toast.error(`${file.name} 10MB'dan büyük`);
+      if (file.size > 20 * 1024 * 1024) {
+        toast.error(`${file.name} 20MB'dan büyük`);
         return;
       }
       const reader = new FileReader();
