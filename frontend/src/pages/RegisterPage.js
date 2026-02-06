@@ -250,17 +250,6 @@ export default function RegisterPage() {
                     <Input
                       id="last_name"
                       name="last_name"
-
-                    <div className="flex flex-col gap-3">
-                      <label className="flex items-center gap-2">
-                        <Checkbox name="agree_terms" checked={formData.agree_terms} onChange={handleChange} />
-                        <span className="text-sm">Kullanıcı sözleşmesini okudum ve kabul ediyorum</span>
-                      </label>
-                      <label className="flex items-center gap-2">
-                        <Checkbox name="agree_kvkk" checked={formData.agree_kvkk} onChange={handleChange} />
-                        <span className="text-sm">Kişisel Verilerin Korunması Kanunu (KVKK) kapsamında bilgilendirildim ve onay veriyorum</span>
-                      </label>
-                    </div>
                       placeholder="Soyisminiz"
                       value={formData.last_name}
                       onChange={handleChange}
@@ -269,6 +258,17 @@ export default function RegisterPage() {
                       data-testid="last-name-input"
                     />
                   </div>
+                </div>
+
+                <div className="flex flex-col gap-3">
+                  <label className="flex items-center gap-2">
+                    <Checkbox name="agree_terms" checked={formData.agree_terms} onChange={handleChange} />
+                    <span className="text-sm">Kullanıcı sözleşmesini okudum ve kabul ediyorum</span>
+                  </label>
+                  <label className="flex items-center gap-2">
+                    <Checkbox name="agree_kvkk" checked={formData.agree_kvkk} onChange={handleChange} />
+                    <span className="text-sm">Kişisel Verilerin Korunması Kanunu (KVKK) kapsamında bilgilendirildim ve onay veriyorum</span>
+                  </label>
                 </div>
 
                 <div className="space-y-2">
