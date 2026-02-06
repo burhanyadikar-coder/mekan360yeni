@@ -788,16 +788,16 @@ async def login(user_data: UserLogin):
     user = await db.users.find_one({"email": user_data.email})
     if not user or not verify_password(user_data.password, user["password"]):
         raise HTTPException(status_code=401, detail="Email veya şifre hatalı")
-    
-    if user.get("subscription_status") != "active":
-        raise HTTPException(status_code=403, detail="Aboneliğiniz aktif değil. Lütfen ödeme yapın.")
-    
-    # Check subscription expiry
+    # If subscription_end is set and in the past, mark as expired but allow login
     if user.get("subscription_end"):
-        end_date = datetime.fromisoformat(user["subscription_end"])
-        if end_date < datetime.now(timezone.utc):
-            await db.users.update_one({"id": user["id"]}, {"$set": {"subscription_status": "expired"}})
-            raise HTTPException(status_code=403, detail="Aboneliğiniz sona erdi. Lütfen yenileyin.")
+        try:
+            end_date = datetime.fromisoformat(user["subscription_end"])
+            if end_date < datetime.now(timezone.utc):
+                await db.users.update_one({"id": user["id"]}, {"$set": {"subscription_status": "expired"}})
+                user["subscription_status"] = "expired"
+        except Exception:
+            # ignore parse errors and continue
+            pass
     
     token = create_token(user["id"])
     package_info = PACKAGES[user["package"]]
