@@ -88,6 +88,21 @@ def base64_to_bytes(base64_string: str) -> tuple:
     
     return base64.b64decode(data), content_type
 
+
+def is_user_active(user_doc: Dict[str, Any]) -> bool:
+    """Return True if user's subscription is active and not expired."""
+    if not user_doc:
+        return False
+    if user_doc.get("subscription_status") != "active":
+        return False
+    end = user_doc.get("subscription_end")
+    if end:
+        try:
+            return datetime.fromisoformat(end) > datetime.now(timezone.utc)
+        except Exception:
+            return False
+    return True
+
 async def upload_base64_to_bunny(base64_string: str, folder: str, filename: str = None) -> Optional[str]:
     """Upload base64 image to Bunny CDN"""
     if not BUNNY_ENABLED or not base64_string:
@@ -294,6 +309,8 @@ class UserCreate(BaseModel):
     phone: str
     package: str = "free"  # Varsayılan ücretsiz paket
     auto_payment: bool = False
+    agree_terms: bool = False
+    agree_kvkk: bool = False
 
 class UserLogin(BaseModel):
     email: EmailStr
@@ -647,6 +664,10 @@ async def register(user_data: UserCreate):
     # Kurumsal paket için kayıt engelle
     if user_data.package == "corporate":
         raise HTTPException(status_code=400, detail="Kurumsal paket için lütfen bizimle iletişime geçin: 0551 478 02 59")
+
+    # Kullanıcı sözleşmesi ve KVKK onayı zorunlu
+    if not getattr(user_data, "agree_terms", False) or not getattr(user_data, "agree_kvkk", False):
+        raise HTTPException(status_code=400, detail="Kullanıcı sözleşmesi ve KVKK kabul edilmelidir.")
     
     package_info = PACKAGES[user_data.package]
     user_id = str(uuid.uuid4())
@@ -667,6 +688,8 @@ async def register(user_data: UserCreate):
         "phone": user_data.phone,
         "package": user_data.package,
         "auto_payment": user_data.auto_payment,
+        "agree_terms": getattr(user_data, "agree_terms", False),
+        "agree_kvkk": getattr(user_data, "agree_kvkk", False),
         "subscription_status": subscription_status,
         "subscription_end": subscription_end,
         "property_count": 0,
@@ -822,6 +845,13 @@ async def get_me(current_user: dict = Depends(get_current_user)):
         auto_payment=current_user.get("auto_payment", False),
         created_at=current_user["created_at"]
     )
+
+
+@api_router.post("/auth/cancel-subscription")
+async def cancel_subscription(current_user: dict = Depends(get_current_user)):
+    """User can cancel auto-renewal; subscription remains active until period end."""
+    await db.users.update_one({"id": current_user["id"]}, {"$set": {"auto_payment": False, "updated_at": datetime.now(timezone.utc).isoformat()}})
+    return {"message": "Abonelik iptal edildi. Mevcut dönem sonuna kadar aktif kalacaktır."}
 
 class ProfileUpdate(BaseModel):
     first_name: Optional[str] = None
@@ -1064,6 +1094,10 @@ async def get_property(property_id: str):
     
     # Emlakçı bilgilerini ekle
     user_doc = await db.users.find_one({"id": property_doc["user_id"]}, {"_id": 0, "password": 0})
+    # Eğer emlakçının aboneliği aktif değilse ilan kamuya gösterilmemeli
+    if not is_user_active(user_doc):
+        raise HTTPException(status_code=404, detail="Gayrimenkul bulunamadı")
+
     if user_doc:
         property_doc["agent"] = AgentInfo(
             first_name=user_doc.get("first_name", ""),
@@ -1463,6 +1497,51 @@ async def admin_get_stats(admin: dict = Depends(get_admin_user)):
         }
     }
 
+
+@admin_router.post("/subscriptions/process")
+async def process_subscriptions(admin: dict = Depends(get_admin_user)):
+    """Process expirations and auto-renew for all users.
+    This endpoint is intended to be called periodically (daily) by a scheduler.
+    """
+    now = datetime.now(timezone.utc)
+    users = await db.users.find({}, {"_id": 0}).to_list(1000)
+    processed = {"renewed": 0, "expired": 0}
+
+    for user in users:
+        sub_end = user.get("subscription_end")
+        if not sub_end:
+            continue
+        try:
+            end_dt = datetime.fromisoformat(sub_end)
+        except Exception:
+            continue
+
+        if end_dt <= now:
+            # Time to either auto-renew or expire
+            if user.get("auto_payment") and user.get("package") in PACKAGES and not PACKAGES[user.get("package")].get("is_free", False):
+                pkg = PACKAGES[user.get("package")]
+                amount = pkg.get("price", 0)
+                next_end = now + timedelta(days=30)
+                payment_doc = {
+                    "id": str(uuid.uuid4()),
+                    "user_id": user["id"],
+                    "amount": amount,
+                    "package": user.get("package"),
+                    "status": "completed",
+                    "payment_date": now.isoformat(),
+                    "next_payment_date": next_end.isoformat(),
+                    "note": "Auto-renewal"
+                }
+                await db.payments.insert_one(payment_doc)
+                await db.users.update_one({"id": user["id"]}, {"$set": {"subscription_end": next_end.isoformat(), "subscription_status": "active", "updated_at": now.isoformat()}})
+                processed["renewed"] += 1
+            else:
+                # Expire the subscription
+                await db.users.update_one({"id": user["id"]}, {"$set": {"subscription_status": "expired", "updated_at": now.isoformat()}})
+                processed["expired"] += 1
+
+    return {"message": "Subscriptions processed", "result": processed}
+
 @admin_router.post("/users")
 async def admin_create_user(data: AdminUserCreate, admin: dict = Depends(get_admin_user)):
     """Admin creates a new user manually"""
@@ -1646,10 +1725,17 @@ async def get_public_group(group_id: str):
         {"id": {"$in": group.get("property_ids", [])}},
         {"_id": 0}
     ).to_list(100)
-    
+
+    # Filter out properties whose owners' subscriptions are not active
+    visible_properties = []
+    for p in properties:
+        owner = await db.users.find_one({"id": p.get("user_id")}, {"_id": 0, "password": 0})
+        if is_user_active(owner):
+            visible_properties.append(PropertyResponse(**p))
+
     return {
         "group": GroupResponse(**group),
-        "properties": [PropertyResponse(**p) for p in properties]
+        "properties": visible_properties
     }
 
 # ==================== SETUP ADMIN ====================

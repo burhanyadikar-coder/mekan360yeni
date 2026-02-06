@@ -66,7 +66,9 @@ export default function RegisterPage() {
     company_name: '',
     phone: '',
     package: initialPackage,
-    auto_payment: false
+    auto_payment: false,
+    agree_terms: false,
+    agree_kvkk: false
   });
   const [loading, setLoading] = useState(false);
   const { login } = useAuth();
@@ -114,6 +116,10 @@ export default function RegisterPage() {
       toast.error('Şifreler eşleşmiyor');
       return false;
     }
+    if (!formData.agree_terms || !formData.agree_kvkk) {
+      toast.error('Kullanıcı sözleşmesi ve KVKK kabul edilmelidir');
+      return false;
+    }
     return true;
   };
 
@@ -136,7 +142,9 @@ export default function RegisterPage() {
         company_name: formData.company_name,
         phone: formData.phone,
         package: formData.package,
-        auto_payment: formData.auto_payment
+        auto_payment: formData.auto_payment,
+        agree_terms: formData.agree_terms,
+        agree_kvkk: formData.agree_kvkk
       });
       
       const result = response.data;
@@ -242,6 +250,17 @@ export default function RegisterPage() {
                     <Input
                       id="last_name"
                       name="last_name"
+
+                    <div className="flex flex-col gap-3">
+                      <label className="flex items-center gap-2">
+                        <Checkbox name="agree_terms" checked={formData.agree_terms} onChange={handleChange} />
+                        <span className="text-sm">Kullanıcı sözleşmesini okudum ve kabul ediyorum</span>
+                      </label>
+                      <label className="flex items-center gap-2">
+                        <Checkbox name="agree_kvkk" checked={formData.agree_kvkk} onChange={handleChange} />
+                        <span className="text-sm">Kişisel Verilerin Korunması Kanunu (KVKK) kapsamında bilgilendirildim ve onay veriyorum</span>
+                      </label>
+                    </div>
                       placeholder="Soyisminiz"
                       value={formData.last_name}
                       onChange={handleChange}
