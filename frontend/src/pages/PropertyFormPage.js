@@ -1274,6 +1274,16 @@ export default function PropertyFormPage() {
           </DialogFooter>
         </DialogContent>
       </Dialog>
+
+      {/* Panorama Creator Dialog */}
+      <PanoramaCreator
+        isOpen={showPanoramaCreator}
+        onClose={() => setShowPanoramaCreator(false)}
+        onComplete={(panoramaBase64) => {
+          setRoomForm(prev => ({ ...prev, panorama_photo: panoramaBase64 }));
+        }}
+        roomName={roomForm.name || 'Oda'}
+      />
     </div>
   );
 }
