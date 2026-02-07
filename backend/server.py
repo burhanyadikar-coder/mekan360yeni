@@ -228,7 +228,7 @@ ADMIN_SECRET = os.environ.get('ADMIN_SECRET', 'admin-secret-2024')
 # Resend Email (optional)
 RESEND_API_KEY = os.environ.get('RESEND_API_KEY')
 SENDER_EMAIL = os.environ.get('SENDER_EMAIL', 'onboarding@resend.dev')
-FRONTEND_URL = os.environ.get('FRONTEND_URL', 'https://user-auth-fix-10.preview.emergentagent.com')
+FRONTEND_URL = os.environ.get('FRONTEND_URL', 'https://urgent-repair-1.preview.emergentagent.com')
 
 app = FastAPI(title="HomeView Pro API")
 api_router = APIRouter(prefix="/api")
