@@ -247,11 +247,16 @@ frontend:
 metadata:
   created_by: "main_agent"
   version: "1.0"
-  test_sequence: 2
+  test_sequence: 3
   run_ui: false
 
 test_plan:
-  current_focus: []
+  current_focus:
+    - "Image Compression"
+    - "City/District Selection"
+    - "Agreements UI"
+    - "360 Photo Rotation"
+    - "Panorama Creator"
   stuck_tasks: []
   test_all: false
   test_priority: "high_first"
@@ -261,3 +266,12 @@ agent_communication:
     message: "Grup yönetimi özellikleri eklendi. Backend API'lerini test et: grup CRUD, daire ekleme/çıkarma, public görüntüleme. Admin login: yadigrb/Yadigar34"
   - agent: "testing"
     message: "Backend group management testing completed successfully. All core group functionality working: CRUD operations (create/read/update/delete groups), property management (add/remove properties from groups), public group sharing, and admin authentication with yadigrb/Yadigar34 credentials. Test success rate: 89.7% (35/39 tests passed). Minor issues found in non-critical endpoints (admin stats, property visits endpoint path). All requested group management features are fully functional."
+  - agent: "main"
+    message: |
+      Yeni özellikler eklendi:
+      1. Fotoğraf sıkıştırma: browser-image-compression ile client-side otomatik optimizasyon
+      2. İl/İlçe seçimi: Türkiye'nin 81 ili ve tüm ilçeleri dropdown ile seçilebilir
+      3. Kullanıcı Sözleşmesi ve KVKK: Detaylı metinler oluşturuldu, kutucuklar zorunlu yapıldı
+      4. 360 döndürme: Pannellum konfigürasyonu düzeltildi
+      5. PanoramaCreator: 8 fotoğraftan basit panorama oluşturma arayüzü eklendi
+      Frontend değişiklikleri yapıldı, backend değişikliği yok.
