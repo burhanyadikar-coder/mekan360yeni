@@ -41,12 +41,35 @@ import {
   ArrowDown,
   ChevronUp,
   ChevronDown,
-  Check
+  Check,
+  Loader2,
+  Camera
 } from 'lucide-react';
 import axios from 'axios';
 import { toast } from 'sonner';
+import imageCompression from 'browser-image-compression';
+import { TURKEY_CITIES, getDistrictsByCity } from '../data/turkeyLocations';
 
 const API_URL = `${process.env.REACT_APP_BACKEND_URL}/api`;
+
+// Fotoğraf sıkıştırma fonksiyonu
+const compressImage = async (file, isPanorama = false) => {
+  const options = {
+    maxSizeMB: isPanorama ? 2 : 1, // Panorama için 2MB, normal için 1MB
+    maxWidthOrHeight: isPanorama ? 4096 : 1920, // Panorama için daha yüksek çözünürlük
+    useWebWorker: true,
+    fileType: 'image/jpeg',
+    initialQuality: 0.85,
+  };
+  
+  try {
+    const compressedFile = await imageCompression(file, options);
+    return compressedFile;
+  } catch (error) {
+    console.error('Sıkıştırma hatası:', error);
+    return file; // Hata durumunda orijinal dosyayı döndür
+  }
+};
 
 const FACING_DIRECTIONS = [
   { value: 'Kuzey', label: 'Kuzey' },
