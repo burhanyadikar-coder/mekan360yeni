@@ -1,0 +1,10 @@
+[
+  { "il": "Adana", "ilceler": ["Aladağ","Ceyhan","Seyhan","Yüreğir","Sarıçam","Çukurova","Karaisalı","Kozan"] },
+  { "il": "Adıyaman", "ilceler": ["Besni","Çelikhan","Gölbaşı","Kahta","Merkez","Samsat","Sincik","Tut"] },
+  { "il": "Ankara", "ilceler": ["Altındağ","Çankaya","Keçiören","Mamak","Sincan","Yenimahalle","Etimesgut","Pursaklar"] },
+  { "il": "İstanbul", "ilceler": ["Adalar","Ataşehir","Avcılar","Bağcılar","Bakırköy","Beşiktaş","Beykoz","Beyoğlu","Beşiktaş","Kartal","Kadıköy","Maltepe","Pendik","Şişli"] },
+  { "il": "İzmir", "ilceler": ["Aliağa","Bergama","Bornova","Çiğli","Konak","Karşıyaka","Karaburun","Seferihisar"] },
+  { "il": "Bursa", "ilceler": ["Osmangazi","Yıldırım","Nilüfer","İnegöl","Gemlik","Mudanya"] },
+  { "il": "Antalya", "ilceler": ["Muratpaşa","Konyaaltı","Kepez","Alanya","Manavgat","Kemer"] },
+  { "il": "Diyarbakır", "ilceler": ["Bağlar","Kayapınar","Sur","Yenişehir","Eğil"] }
+]
