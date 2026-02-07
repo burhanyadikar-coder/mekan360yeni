@@ -161,7 +161,7 @@ export default function VirtualTourViewer({
       });
     }
 
-    // Yeni viewer oluştur
+    // Yeni viewer oluştur - Tam sürükleme desteği ile
     viewerRef.current = window.pannellum.viewer(pannellumRef.current, {
       type: 'equirectangular',
       panorama: currentRoom.panorama_photo,
@@ -176,11 +176,24 @@ export default function VirtualTourViewer({
       pitch: 0,
       yaw: 0,
       hotSpots: hotspots,
-      autoRotate: 0
+      autoRotate: 0,
+      // Sürükleme ve dokunma ayarları
+      draggable: true,
+      disableKeyboardCtrl: false,
+      friction: 0.15,
+      touchPanSpeedCoeffFactor: 1,
+      // Hotspot'lara tıklanmadığında sürüklemeyi engellemeyi kapat
+      hotSpotDebug: false
     });
 
-    // Viewer yaw değişikliğini izle
+    // Viewer yaw değişikliğini izle - hem mouse hem touch için
     viewerRef.current.on('mouseup', () => {
+      if (viewerRef.current) {
+        setViewerYaw(viewerRef.current.getYaw());
+      }
+    });
+    
+    viewerRef.current.on('touchend', () => {
       if (viewerRef.current) {
         setViewerYaw(viewerRef.current.getYaw());
       }
