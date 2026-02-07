@@ -745,27 +745,37 @@ export default function PropertyFormPage() {
                 <div className="grid grid-cols-2 gap-4">
                   <div className="space-y-2">
                     <Label htmlFor="city">Şehir *</Label>
-                    <Input
-                      id="city"
-                      name="city"
-                      placeholder="İstanbul"
-                      value={formData.city}
-                      onChange={handleChange}
-                      required
-                      data-testid="city-input"
-                    />
+                    <Select value={formData.city} onValueChange={(v) => handleSelectChange('city', v)}>
+                      <SelectTrigger data-testid="city-select">
+                        <SelectValue placeholder="İl seçin" />
+                      </SelectTrigger>
+                      <SelectContent className="max-h-[300px]">
+                        {TURKEY_CITIES.map(city => (
+                          <SelectItem key={city.value} value={city.value}>
+                            {city.label}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
                   </div>
                   <div className="space-y-2">
                     <Label htmlFor="district">İlçe *</Label>
-                    <Input
-                      id="district"
-                      name="district"
-                      placeholder="Kadıköy"
-                      value={formData.district}
-                      onChange={handleChange}
-                      required
-                      data-testid="district-input"
-                    />
+                    <Select 
+                      value={formData.district} 
+                      onValueChange={(v) => handleSelectChange('district', v)}
+                      disabled={!formData.city}
+                    >
+                      <SelectTrigger data-testid="district-select">
+                        <SelectValue placeholder={formData.city ? "İlçe seçin" : "Önce il seçin"} />
+                      </SelectTrigger>
+                      <SelectContent className="max-h-[300px]">
+                        {availableDistricts.map(district => (
+                          <SelectItem key={district} value={district}>
+                            {district}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
                   </div>
                 </div>
               </CardContent>
