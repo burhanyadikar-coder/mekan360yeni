@@ -211,21 +211,40 @@ export default function PropertyFormPage() {
 
   const handleSelectChange = (name, value) => {
     setFormData(prev => ({ ...prev, [name]: value }));
+    
+    // İl değiştiğinde ilçeleri güncelle
+    if (name === 'city') {
+      const districts = getDistrictsByCity(value);
+      setAvailableDistricts(districts);
+      setFormData(prev => ({ ...prev, city: value, district: '' })); // İlçeyi sıfırla
+    }
   };
 
-  // Cover image upload
-  const handleCoverUpload = (e) => {
+  // Cover image upload with compression
+  const handleCoverUpload = async (e) => {
     const file = e.target.files?.[0];
     if (file) {
-      if (file.size > 20 * 1024 * 1024) {
-        toast.error('Görsel 20MB\'dan küçük olmalı');
+      if (file.size > 10 * 1024 * 1024) {
+        toast.error('Görsel 10MB\'dan küçük olmalı');
         return;
       }
-      const reader = new FileReader();
-      reader.onloadend = () => {
-        setFormData(prev => ({ ...prev, cover_image: reader.result }));
-      };
-      reader.readAsDataURL(file);
+      
+      setIsCompressing(true);
+      toast.info('Görsel optimize ediliyor...');
+      
+      try {
+        const compressedFile = await compressImage(file, false);
+        const reader = new FileReader();
+        reader.onloadend = () => {
+          setFormData(prev => ({ ...prev, cover_image: reader.result }));
+          setIsCompressing(false);
+          toast.success('Görsel optimize edildi');
+        };
+        reader.readAsDataURL(compressedFile);
+      } catch (error) {
+        setIsCompressing(false);
+        toast.error('Görsel yüklenemedi');
+      }
     }
   };
 
