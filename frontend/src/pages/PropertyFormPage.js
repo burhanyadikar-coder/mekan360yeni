@@ -170,6 +170,12 @@ export default function PropertyFormPage() {
   // POI state
   const [newPoi, setNewPoi] = useState({ name: '', type: 'school', distance: '' });
 
+  // Fotoğraf yükleme durumu
+  const [isCompressing, setIsCompressing] = useState(false);
+
+  // İl/İlçe state
+  const [availableDistricts, setAvailableDistricts] = useState([]);
+
   const has360 = user?.has_360;
   const maxFloors = formData.property_type === 'triplex' ? 3 : formData.property_type === 'duplex' ? 2 : 1;
 
