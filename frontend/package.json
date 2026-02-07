@@ -9,6 +9,9 @@
     "react-dom": "^18.2.0",
     "axios": "^1.4.0"
   },
+  "optionalDependencies": {
+    "lucide-react": "^0.259.0"
+  },
   "devDependencies": {
     "react-scripts": "5.0.1"
   },
