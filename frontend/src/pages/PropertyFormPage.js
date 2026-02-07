@@ -275,27 +275,37 @@ export default function PropertyFormPage() {
     setShowRoomDialog(true);
   };
 
-  const handleRoomPhotoUpload = (e, isPanorama = false) => {
+  const handleRoomPhotoUpload = async (e, isPanorama = false) => {
     const files = Array.from(e.target.files || []);
     
-    files.forEach(file => {
-      if (file.size > 20 * 1024 * 1024) {
-        toast.error(`${file.name} 20MB'dan büyük`);
-        return;
+    for (const file of files) {
+      if (file.size > 10 * 1024 * 1024) {
+        toast.error(`${file.name} 10MB'dan büyük`);
+        continue;
       }
-      const reader = new FileReader();
-      reader.onloadend = () => {
-        if (isPanorama) {
-          setRoomForm(prev => ({ ...prev, panorama_photo: reader.result }));
-        } else {
-          setRoomForm(prev => ({
-            ...prev,
-            photos: [...prev.photos, reader.result]
-          }));
-        }
-      };
-      reader.readAsDataURL(file);
-    });
+      
+      setIsCompressing(true);
+      
+      try {
+        const compressedFile = await compressImage(file, isPanorama);
+        const reader = new FileReader();
+        reader.onloadend = () => {
+          if (isPanorama) {
+            setRoomForm(prev => ({ ...prev, panorama_photo: reader.result }));
+          } else {
+            setRoomForm(prev => ({
+              ...prev,
+              photos: [...prev.photos, reader.result]
+            }));
+          }
+          setIsCompressing(false);
+        };
+        reader.readAsDataURL(compressedFile);
+      } catch (error) {
+        setIsCompressing(false);
+        toast.error(`${file.name} yüklenemedi`);
+      }
+    }
   };
 
   const saveRoom = () => {
