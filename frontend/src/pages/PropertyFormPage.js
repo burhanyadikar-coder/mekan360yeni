@@ -49,6 +49,7 @@ import axios from 'axios';
 import { toast } from 'sonner';
 import imageCompression from 'browser-image-compression';
 import { TURKEY_CITIES, getDistrictsByCity } from '../data/turkeyLocations';
+import PanoramaCreator from '../components/PanoramaCreator';
 
 const API_URL = `${process.env.REACT_APP_BACKEND_URL}/api`;
 
