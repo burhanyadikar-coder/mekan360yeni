@@ -177,6 +177,9 @@ export default function PropertyFormPage() {
   // İl/İlçe state
   const [availableDistricts, setAvailableDistricts] = useState([]);
 
+  // Panorama Creator state
+  const [showPanoramaCreator, setShowPanoramaCreator] = useState(false);
+
   const has360 = user?.has_360;
   const maxFloors = formData.property_type === 'triplex' ? 3 : formData.property_type === 'duplex' ? 2 : 1;
 
