@@ -527,28 +527,60 @@ export default function RegisterPage() {
                 </Card>
               )}
 
-              {/* Action Buttons */}
-              {/* Agreement checkboxes (required) */}
-              <Card className="border-border/40">
-                <CardContent className="p-6">
-                  <div className="flex flex-col gap-3">
-                    <label className="flex items-start gap-3">
-                      <Checkbox name="agree_terms" checked={formData.agree_terms} onChange={handleChange} />
+              {/* Agreement checkboxes (required) - En sonda */}
+              <Card className="border-border/40 border-2 border-amber-200 bg-amber-50/30">
+                <CardHeader className="pb-2">
+                  <CardTitle className="text-base flex items-center gap-2 text-amber-800">
+                    <Check className="w-5 h-5" />
+                    Zorunlu Onaylar
+                  </CardTitle>
+                </CardHeader>
+                <CardContent className="pt-2">
+                  <div className="flex flex-col gap-4">
+                    <label className="flex items-start gap-3 cursor-pointer group">
+                      <Checkbox 
+                        name="agree_terms" 
+                        checked={formData.agree_terms} 
+                        onCheckedChange={(checked) => setFormData(prev => ({ ...prev, agree_terms: checked }))}
+                        className="mt-0.5"
+                      />
                       <div className="text-sm">
-                        <div>Kullanıcı Sözleşmesini ve Hizmet Koşullarını okudum ve kabul ediyorum.</div>
-                        <a href="/user-agreement.html" target="_blank" rel="noreferrer" className="text-primary underline text-sm">Sözleşmeyi oku</a>
+                        <div className="group-hover:text-primary transition-colors">
+                          <span className="text-red-500 font-bold">*</span> Kullanıcı Sözleşmesini ve Hizmet Koşullarını okudum ve kabul ediyorum.
+                        </div>
+                        <a href="/user-agreement.html" target="_blank" rel="noreferrer" className="text-primary underline text-sm hover:text-primary/80">
+                          → Sözleşmeyi oku (İptal/İade politikası dahil)
+                        </a>
                       </div>
                     </label>
-                    <label className="flex items-start gap-3">
-                      <Checkbox name="agree_kvkk" checked={formData.agree_kvkk} onChange={handleChange} />
+                    <label className="flex items-start gap-3 cursor-pointer group">
+                      <Checkbox 
+                        name="agree_kvkk" 
+                        checked={formData.agree_kvkk} 
+                        onCheckedChange={(checked) => setFormData(prev => ({ ...prev, agree_kvkk: checked }))}
+                        className="mt-0.5"
+                      />
                       <div className="text-sm">
-                        <div>Kişisel Verilerin Korunması Kanunu (KVKK) kapsamında bilgilendirildim ve onay veriyorum.</div>
-                        <a href="/kvkk.html" target="_blank" rel="noreferrer" className="text-primary underline text-sm">KVKK metnini oku</a>
+                        <div className="group-hover:text-primary transition-colors">
+                          <span className="text-red-500 font-bold">*</span> Kişisel Verilerin Korunması Kanunu (KVKK) kapsamında bilgilendirildim ve onay veriyorum.
+                        </div>
+                        <a href="/kvkk.html" target="_blank" rel="noreferrer" className="text-primary underline text-sm hover:text-primary/80">
+                          → KVKK metnini oku
+                        </a>
                       </div>
                     </label>
+                    
+                    {/* Uyarı mesajı */}
+                    {(!formData.agree_terms || !formData.agree_kvkk) && (
+                      <div className="text-xs text-amber-700 bg-amber-100 px-3 py-2 rounded-lg">
+                        ⚠️ Devam etmek için yukarıdaki her iki onay kutucuğunu işaretlemeniz gerekmektedir.
+                      </div>
+                    )}
                   </div>
                 </CardContent>
               </Card>
+              
+              {/* Action Buttons */}
               <div className="flex gap-4">
                 <Button
                   type="button"
@@ -561,8 +593,8 @@ export default function RegisterPage() {
                 </Button>
                 <Button
                   type="submit"
-                  disabled={loading}
-                  className={`flex-1 h-12 rounded-full ${isFreePackage ? 'bg-green-600 hover:bg-green-700' : 'bg-primary hover:bg-primary/90'} text-white`}
+                  disabled={loading || !formData.agree_terms || !formData.agree_kvkk}
+                  className={`flex-1 h-12 rounded-full ${isFreePackage ? 'bg-green-600 hover:bg-green-700' : 'bg-primary hover:bg-primary/90'} text-white disabled:opacity-50 disabled:cursor-not-allowed`}
                   data-testid="continue-to-payment-btn"
                 >
                   {loading ? 'İşleniyor...' : (
