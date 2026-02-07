@@ -1232,11 +1232,35 @@ export default function PropertyFormPage() {
                     <div className="absolute bottom-2 left-2 px-2 py-1 bg-gold text-white text-xs rounded">360°</div>
                   </div>
                 ) : (
-                  <label className="block w-full h-24 border-2 border-dashed border-gold/50 rounded flex flex-col items-center justify-center cursor-pointer hover:border-gold">
-                    <span className="text-gold font-bold">360°</span>
-                    <span className="text-xs text-muted-foreground">Panoramik fotoğraf yükle</span>
-                    <input type="file" accept="image/*" className="hidden" onChange={(e) => handleRoomPhotoUpload(e, true)} />
-                  </label>
+                  <div className="space-y-2">
+                    {/* 360 Fotoğraf Yükle */}
+                    <label className="block w-full h-20 border-2 border-dashed border-gold/50 rounded flex flex-col items-center justify-center cursor-pointer hover:border-gold transition-colors">
+                      <span className="text-gold font-bold">360°</span>
+                      <span className="text-xs text-muted-foreground">Hazır panoramik fotoğraf yükle</span>
+                      <input type="file" accept="image/*" className="hidden" onChange={(e) => handleRoomPhotoUpload(e, true)} />
+                    </label>
+                    
+                    {/* veya */}
+                    <div className="relative">
+                      <div className="absolute inset-0 flex items-center">
+                        <span className="w-full border-t border-border" />
+                      </div>
+                      <div className="relative flex justify-center text-xs">
+                        <span className="bg-background px-2 text-muted-foreground">veya</span>
+                      </div>
+                    </div>
+                    
+                    {/* 360 Fotoğraf Oluştur */}
+                    <button
+                      type="button"
+                      onClick={() => setShowPanoramaCreator(true)}
+                      className="w-full h-20 border-2 border-dashed border-primary/50 rounded flex flex-col items-center justify-center hover:border-primary hover:bg-primary/5 transition-colors"
+                    >
+                      <Camera className="w-5 h-5 text-primary mb-1" />
+                      <span className="text-primary font-medium text-sm">360° Fotoğraf Oluştur</span>
+                      <span className="text-xs text-muted-foreground">8 fotoğrafla panorama oluştur</span>
+                    </button>
+                  </div>
                 )}
               </div>
             )}
