@@ -906,11 +906,21 @@ export default function PropertyFormPage() {
                   <button
                     type="button"
                     onClick={() => coverInputRef.current?.click()}
-                    className="w-full h-32 border-2 border-dashed border-border rounded-lg flex flex-col items-center justify-center gap-2 hover:border-primary/50 transition-colors"
+                    disabled={isCompressing}
+                    className="w-full h-32 border-2 border-dashed border-border rounded-lg flex flex-col items-center justify-center gap-2 hover:border-primary/50 transition-colors disabled:opacity-50"
                     data-testid="upload-cover-btn"
                   >
-                    <Upload className="w-6 h-6 text-muted-foreground" />
-                    <span className="text-sm text-muted-foreground">Kapak görseli yükle</span>
+                    {isCompressing ? (
+                      <>
+                        <Loader2 className="w-6 h-6 text-primary animate-spin" />
+                        <span className="text-sm text-primary">Optimize ediliyor...</span>
+                      </>
+                    ) : (
+                      <>
+                        <Upload className="w-6 h-6 text-muted-foreground" />
+                        <span className="text-sm text-muted-foreground">Kapak görseli yükle (max 10MB)</span>
+                      </>
+                    )}
                   </button>
                 )}
               </CardContent>
