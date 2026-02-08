@@ -66,7 +66,7 @@ server {
 
     # Frontend
     location / {
-        root /var/www/mekan360/frontend/dist;
+        root /var/www/mekan360/frontend/build;
         try_files $uri $uri/ /index.html;
     }
 

@@ -29,7 +29,7 @@ pip install -r requirements.txt
 
 # PM2 ile backend başlat
 pm2 delete mekan360-backend 2>/dev/null || true
-pm2 start "source venv/bin/activate && uvicorn server:app --host 0.0.0.0 --port 8001" --name mekan360-backend --cwd $BACKEND_DIR
+pm2 start "venv/bin/uvicorn" --name mekan360-backend --interpreter none -- server:app --host 0.0.0.0 --port 8001
 
 # Frontend kurulumu
 echo "[2/4] Frontend kuruluyor..."
