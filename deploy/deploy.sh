@@ -15,8 +15,22 @@ echo "=========================================="
 echo "  mekan360 Deploy Başlıyor..."
 echo "=========================================="
 
+# MongoDB kontrolü
+echo "[0/5] MongoDB kontrolü..."
+if ! systemctl is-active --quiet mongod; then
+    echo "MongoDB başlatılıyor..."
+    systemctl start mongod
+fi
+
+# .env dosyası kontrolü
+if [ ! -f "$BACKEND_DIR/.env" ]; then
+    echo "⚠️  HATA: Backend .env dosyası bulunamadı!"
+    echo "Lütfen $BACKEND_DIR/.env dosyasını oluşturun."
+    exit 1
+fi
+
 # Backend kurulumu
-echo "[1/4] Backend kuruluyor..."
+echo "[1/5] Backend kuruluyor..."
 cd $BACKEND_DIR
 
 # Python virtual environment
@@ -32,20 +46,27 @@ pm2 delete mekan360-backend 2>/dev/null || true
 pm2 start "venv/bin/uvicorn" --name mekan360-backend --interpreter none -- server:app --host 0.0.0.0 --port 8001
 
 # Frontend kurulumu
-echo "[2/4] Frontend kuruluyor..."
+echo "[2/5] Frontend kuruluyor..."
 cd $FRONTEND_DIR
 yarn install
 yarn build
 
 # PM2 kaydet
-echo "[3/4] PM2 yapılandırılıyor..."
+echo "[3/5] PM2 yapılandırılıyor..."
 pm2 save
 pm2 startup
 
 # Nginx restart
-echo "[4/4] Nginx yeniden başlatılıyor..."
+echo "[4/5] Nginx yeniden başlatılıyor..."
 systemctl restart nginx
 
+# Durum kontrolü
+echo "[5/5] Durum kontrol ediliyor..."
+sleep 2
+pm2 status
+echo ""
+echo "MongoDB durumu:"
+systemctl status mongod --no-pager | head -3
 echo ""
 echo "=========================================="
 echo "  DEPLOY TAMAMLANDI!"
