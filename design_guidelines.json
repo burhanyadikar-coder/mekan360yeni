@@ -1,0 +1,180 @@
+{
+  "identity": {
+    "persona": "E1 - The Anti-AI Designer",
+    "principles": [
+      "Fusion over Imitation: Mix Swiss Precision with Luxury Warmth",
+      "Emotion First: Trust and Aspiration",
+      "Content is King: The Property is the Hero",
+      "Zoom In: Detail-oriented visuals",
+      "Negative Space: Luxury requires breathing room"
+    ],
+    "anti_patterns": [
+      "No generic 'Real Estate Blue' (#007AFF)",
+      "No 'Inter' for Headings",
+      "No Center-Everything layouts",
+      "No 100% width cards without padding"
+    ]
+  },
+  "typography": {
+    "font_family": {
+      "headings": "Outfit, sans-serif",
+      "body": "Plus Jakarta Sans, sans-serif",
+      "accent": "Cormorant Garamond, serif"
+    },
+    "weights": {
+      "headings": "Light (300) or Semibold (600) - Avoid Regular",
+      "body": "Regular (400) and Medium (500)"
+    },
+    "usage": {
+      "h1": "text-5xl md:text-7xl font-light tracking-tight text-primary",
+      "h2": "text-3xl md:text-4xl font-semibold tracking-tight text-primary",
+      "h3": "text-xl md:text-2xl font-medium text-primary/90",
+      "body": "text-base leading-relaxed text-muted-foreground",
+      "caption": "text-xs uppercase tracking-widest text-muted-foreground/80 font-semibold",
+      "quote": "font-serif italic text-2xl text-accent"
+    }
+  },
+  "colors": {
+    "palette": {
+      "primary": {
+        "DEFAULT": "#064E3B",
+        "foreground": "#FFFFFF",
+        "50": "#ECFDF5",
+        "100": "#D1FAE5",
+        "900": "#064E3B",
+        "950": "#022C22"
+      },
+      "secondary": {
+        "DEFAULT": "#F3F4F6",
+        "foreground": "#1F2937"
+      },
+      "accent": {
+        "DEFAULT": "#C5A059",
+        "foreground": "#FFFFFF",
+        "hover": "#B08D45"
+      },
+      "background": "#FAFAF9",
+      "foreground": "#1C1917",
+      "muted": "#F5F5F4",
+      "border": "#E7E5E4"
+    },
+    "gradients": {
+      "hero": "linear-gradient(to bottom, rgba(6, 78, 59, 0.9), rgba(6, 78, 59, 0.4))",
+      "glass": "linear-gradient(135deg, rgba(255, 255, 255, 0.1), rgba(255, 255, 255, 0.05))"
+    },
+    "rules": [
+      "Never use pure black (#000000). Use #0C0A09",
+      "Primary color is for Text and Key Actions only",
+      "Backgrounds should be warm off-white (#FAFAF9) or deep luxury dark (#022C22) for immersive sections"
+    ]
+  },
+  "layout": {
+    "spacing": {
+      "container_padding": "p-6 md:p-12 lg:p-24",
+      "section_gap": "gap-12 md:gap-24",
+      "element_gap": "gap-4 md:gap-8"
+    },
+    "grids": {
+      "dashboard": "grid grid-cols-1 md:grid-cols-3 lg:grid-cols-4 gap-6",
+      "landing": "grid grid-cols-1 md:grid-cols-12 gap-8",
+      "bento_rules": [
+        "Hero Card: col-span-full md:col-span-2 row-span-2",
+        "Stat Card: col-span-1 row-span-1",
+        "List Card: col-span-1 row-span-2"
+      ]
+    },
+    "border_radius": {
+      "default": "rounded-none",
+      "buttons": "rounded-full",
+      "cards": "rounded-sm"
+    }
+  },
+  "components": {
+    "buttons": {
+      "primary": "bg-primary text-primary-foreground hover:bg-primary/90 h-12 px-8 rounded-full text-sm uppercase tracking-widest transition-all duration-300",
+      "secondary": "bg-transparent border border-primary/20 text-primary hover:bg-primary/5 h-12 px-8 rounded-full text-sm uppercase tracking-widest",
+      "ghost": "hover:bg-accent/10 text-accent hover:text-accent-foreground"
+    },
+    "cards": {
+      "base": "bg-white border border-border/40 shadow-sm hover:shadow-md transition-all duration-300 p-6",
+      "glass": "backdrop-blur-xl bg-white/70 border border-white/20 shadow-xl"
+    },
+    "inputs": {
+      "style": "bg-transparent border-b border-border focus:border-primary rounded-none px-0 py-4 focus:ring-0 transition-colors"
+    },
+    "360_viewer": {
+      "library": "pannellum-react",
+      "container_style": "w-full h-[60vh] md:h-[80vh] relative overflow-hidden rounded-sm shadow-2xl",
+      "overlay_style": "absolute bottom-8 left-8 right-8 z-10 bg-black/40 backdrop-blur-md p-6 text-white rounded-sm border border-white/10"
+    },
+    "sun_simulation": {
+      "type": "custom_slider",
+      "description": "A slider ranging from 06:00 to 20:00. Changes CSS filter: brightness and sepia on the image container. Rotates a radial-gradient shadow overlay.",
+      "css_logic": "filter: brightness(var(--brightness)) sepia(var(--sepia)); --shadow-rotation: var(--rotation)deg;"
+    }
+  },
+  "visual_enhancers": {
+    "textures": {
+      "noise": "url(\"data:image/svg+xml,%3Csvg viewBox='0 0 200 200' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='noiseFilter'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.65' numOctaves='3' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23noiseFilter)' opacity='0.05'/%3E%3C/svg%3E\")"
+    },
+    "shadows": {
+      "soft": "0 20px 40px -10px rgba(6, 78, 59, 0.1)",
+      "sharp": "4px 4px 0px 0px rgba(197, 160, 89, 0.2)"
+    },
+    "animations": {
+      "hover_lift": "hover:-translate-y-1 transition-transform duration-300 ease-out",
+      "fade_in": "animate-in fade-in duration-700 slide-in-from-bottom-4"
+    }
+  },
+  "assets": {
+    "images": {
+      "hero_bg": "https://images.unsplash.com/photo-1758957530781-4ff54e09bee2?crop=entropy&cs=srgb&fm=jpg&q=85",
+      "exterior_dusk": "https://images.unsplash.com/photo-1758193431355-54df41421657?crop=entropy&cs=srgb&fm=jpg&q=85",
+      "agent_portrait": "https://images.pexels.com/photos/30004323/pexels-photo-30004323.jpeg",
+      "sunny_interior": "https://images.unsplash.com/photo-1627383837679-6488f58969d5?crop=entropy&cs=srgb&fm=jpg&q=85",
+      "placeholder_360": "https://pannellum.org/images/alma.jpg"
+    },
+    "icons": {
+      "library": "lucide-react",
+      "style": "stroke-width: 1.5px; size: 20px"
+    }
+  },
+  "instructions_to_main_agent": {
+    "setup": [
+      "Install dependencies: npm install pannellum-react recharts framer-motion lucide-react clsx tailwind-merge",
+      "Configure Tailwind with the custom colors and fonts defined above.",
+      "Ensure 'Outfit' and 'Plus Jakarta Sans' are imported from Google Fonts in index.css."
+    ],
+    "implementation_priority": [
+      "1. Layout Shell (Navbar, Footer, Sidebar)",
+      "2. Landing Page (Hero, Features, Trust)",
+      "3. Dashboard (Stats, Grid)",
+      "4. Property Detail (360 Viewer, Sun Sim)",
+      "5. Auth Pages (JWT Logic)"
+    ],
+    "specific_rules": [
+      "Use 'pannellum-react' for the 360 view. If it fails, fallback to a static image with a 'View 360' button overlay.",
+      "For Sun Simulation: Create a 'TimeSlider' component. It should update a state 'time' (6-20). Calculate brightness (peak at 13) and shadow rotation based on this state.",
+      "Use 'recharts' for the Analytics page (LineChart for visits, PieChart for demographics).",
+      "Ensure all forms use 'react-hook-form' and 'zod' for validation (standard practice)."
+    ]
+  },
+  "UNIVERSAL_GUIDELINES_FOR_MAIN_AGENT": [
+    "Dark colors look good when used independently without gradients. DO NOT use dark colors as gradients",
+    "Don't make generic centered layouts, simplistic gradients, and uniform styling.",
+    "Create depth through layered design elements with z-index hierarchy",
+    "Use glass-morphism effects with backdrop filters (12-24px blur)",
+    "You MUST NOT apply universal transition. Eg: transition: all. This results in breaking transforms.",
+    "You MUST NOT center align the app container.",
+    "Always use modern button styles like pill-shaped, or sharp button with interaction animations.",
+    "NEVER: use AI assistant Emoji characters like 🤖🧠 etc.",
+    "Every interaction needs micro-animations.",
+    "Use 2-3x more spacing than feels comfortable.",
+    "Subtle grain textures, noise overlays, custom cursors, selection states, and loading animations.",
+    "Main agent relies on these image URLs. Missing categories = main agent will use placeholder text which is FORBIDDEN",
+    "Prioritize using pre-existing components from src/components/ui when applicable",
+    "Components MUST use named exports",
+    "Pages MUST use default exports",
+    "Use sonner for toasts"
+  ]
+}

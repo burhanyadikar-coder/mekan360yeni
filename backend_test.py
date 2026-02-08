@@ -1,0 +1,717 @@
+#!/usr/bin/env python3
+
+import requests
+import sys
+import json
+import uuid
+from datetime import datetime
+import base64
+
+class HomeViewProAPITester:
+    def __init__(self, base_url="https://urgent-repair-1.preview.emergentagent.com/api"):
+        self.base_url = base_url
+        self.token = None
+        self.user_id = None
+        self.test_property_id = None
+        self.test_group_id = None
+        self.tests_run = 0
+        self.tests_passed = 0
+        self.failed_tests = []
+        
+        # Test data
+        self.test_email = f"test_{uuid.uuid4().hex[:8]}@example.com"
+        self.test_password = "TestPass123!"
+        self.test_company = "Test Emlak Ltd."
+        self.test_phone = "05551234567"
+
+    def log_result(self, test_name, success, details=""):
+        """Log test result"""
+        self.tests_run += 1
+        if success:
+            self.tests_passed += 1
+            print(f"✅ {test_name} - PASSED")
+        else:
+            self.failed_tests.append({"test": test_name, "details": details})
+            print(f"❌ {test_name} - FAILED: {details}")
+
+    def make_request(self, method, endpoint, data=None, expected_status=200):
+        """Make HTTP request with proper headers"""
+        url = f"{self.base_url}/{endpoint}"
+        headers = {'Content-Type': 'application/json'}
+        
+        if self.token:
+            headers['Authorization'] = f'Bearer {self.token}'
+
+        try:
+            if method == 'GET':
+                response = requests.get(url, headers=headers, timeout=30)
+            elif method == 'POST':
+                response = requests.post(url, json=data, headers=headers, timeout=30)
+            elif method == 'PUT':
+                response = requests.put(url, json=data, headers=headers, timeout=30)
+            elif method == 'DELETE':
+                response = requests.delete(url, headers=headers, timeout=30)
+            else:
+                return False, {"error": f"Unsupported method: {method}"}, 0
+
+            success = response.status_code == expected_status
+            
+            try:
+                response_data = response.json()
+            except:
+                response_data = {"raw_response": response.text}
+                
+            return success, response_data, response.status_code
+
+        except requests.exceptions.RequestException as e:
+            return False, {"error": str(e)}, 0
+
+    def test_health_check(self):
+        """Test API health endpoints"""
+        print("\n🔍 Testing Health Check...")
+        
+        # Test root endpoint
+        success, data, _ = self.make_request('GET', '')
+        self.log_result("Root endpoint", success and "HomeView Pro API" in str(data))
+        
+        # Test health endpoint
+        success, data, _ = self.make_request('GET', 'health')
+        self.log_result("Health endpoint", success and data.get("status") == "healthy")
+
+    def test_user_registration(self):
+        """Test user registration with new package system"""
+        print("\n🔍 Testing User Registration...")
+        
+        registration_data = {
+            "email": self.test_email,
+            "password": self.test_password,
+            "first_name": "Test",
+            "last_name": "User",
+            "company_name": self.test_company,
+            "phone": self.test_phone,
+            "package": "premium",
+            "auto_payment": False
+        }
+        
+        success, data, _ = self.make_request('POST', 'auth/register', registration_data, 200)
+        
+        if success and 'user_id' in data:
+            self.user_id = data['user_id']
+            self.log_result("User registration", True)
+        else:
+            self.log_result("User registration", False, str(data))
+
+    def test_payment_completion(self):
+        """Test payment completion flow"""
+        print("\n🔍 Testing Payment Completion...")
+        
+        if not self.user_id:
+            self.log_result("Payment completion", False, "No user ID available")
+            return
+            
+        payment_data = {
+            "user_id": self.user_id,
+            "amount": 1000.0,
+            "package": "premium"
+        }
+        
+        success, data, _ = self.make_request('POST', 'auth/complete-payment', payment_data, 200)
+        
+        if success and 'access_token' in data:
+            self.token = data['access_token']
+            self.log_result("Payment completion", True)
+        else:
+            self.log_result("Payment completion", False, str(data))
+
+    def test_user_login(self):
+        """Test user login with existing credentials"""
+        print("\n🔍 Testing User Login...")
+        
+        login_data = {
+            "email": self.test_email,
+            "password": self.test_password
+        }
+        
+        success, data, _ = self.make_request('POST', 'auth/login', login_data, 200)
+        
+        if success and 'access_token' in data:
+            self.token = data['access_token']  # Update token
+            self.log_result("User login", True)
+        else:
+            self.log_result("User login", False, str(data))
+
+    def test_get_user_profile(self):
+        """Test getting current user profile"""
+        print("\n🔍 Testing User Profile...")
+        
+        success, data, _ = self.make_request('GET', 'auth/me', expected_status=200)
+        
+        if success and data.get('email') == self.test_email:
+            self.log_result("Get user profile", True)
+        else:
+            self.log_result("Get user profile", False, str(data))
+
+    def test_create_property(self):
+        """Test creating a new property"""
+        print("\n🔍 Testing Property Creation...")
+        
+        # Create a simple base64 image for testing
+        sample_image = "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mNk+M9QDwADhgGAWjR9awAAAABJRU5ErkJggg=="
+        
+        property_data = {
+            "title": "Test Luxury Apartment",
+            "description": "Beautiful test apartment with sea view",
+            "address": "Test Street 123",
+            "city": "Istanbul",
+            "district": "Kadikoy",
+            "square_meters": 120.5,
+            "room_count": "3+1",
+            "property_type": "single",
+            "floor": 5,
+            "total_floors": 10,
+            "building_age": 3,
+            "heating_type": "Doğalgaz (Kombi)",
+            "facing_direction": "Güney",
+            "price": 2500000.0,
+            "currency": "TRY",
+            "view_type": "regular",
+            "rooms": [
+                {
+                    "id": "room-1",
+                    "name": "Salon",
+                    "room_type": "living_room",
+                    "position_x": 0,
+                    "position_y": 0,
+                    "floor": 0,
+                    "square_meters": 25.0,
+                    "facing_direction": "Güney",
+                    "photos": [sample_image],
+                    "panorama_photo": None,
+                    "connections": []
+                }
+            ],
+            "entry_room_id": "room-1",
+            "pois": [
+                {
+                    "name": "Test School",
+                    "type": "school",
+                    "distance": "500m"
+                },
+                {
+                    "name": "Test Market",
+                    "type": "market", 
+                    "distance": "200m"
+                }
+            ],
+            "cover_image": sample_image
+        }
+        
+        success, data, status_code = self.make_request('POST', 'properties', property_data, 200)
+        
+        # Accept both 200 and 201 as valid for property creation
+        if not success and status_code == 201:
+            success = True
+            
+        if success and 'id' in data:
+            self.test_property_id = data['id']
+            self.log_result("Create property", True)
+        else:
+            self.log_result("Create property", False, f"Status: {status_code}, Data: {str(data)}")
+
+    def test_get_properties(self):
+        """Test getting user properties"""
+        print("\n🔍 Testing Get Properties...")
+        
+        success, data, _ = self.make_request('GET', 'properties', expected_status=200)
+        
+        if success and isinstance(data, list):
+            self.log_result("Get properties list", True)
+            
+            # Check if our test property is in the list
+            if self.test_property_id:
+                property_found = any(p.get('id') == self.test_property_id for p in data)
+                self.log_result("Test property in list", property_found)
+        else:
+            self.log_result("Get properties list", False, str(data))
+
+    def test_get_single_property(self):
+        """Test getting a single property by ID"""
+        print("\n🔍 Testing Get Single Property...")
+        
+        if not self.test_property_id:
+            self.log_result("Get single property", False, "No test property ID available")
+            return
+            
+        success, data, _ = self.make_request('GET', f'properties/{self.test_property_id}', expected_status=200)
+        
+        if success and data.get('id') == self.test_property_id:
+            self.log_result("Get single property", True)
+            
+            # Verify property data
+            expected_fields = ['title', 'address', 'city', 'district', 'price', 'pois']
+            all_fields_present = all(field in data for field in expected_fields)
+            self.log_result("Property data completeness", all_fields_present)
+        else:
+            self.log_result("Get single property", False, str(data))
+
+    def test_update_property(self):
+        """Test updating a property"""
+        print("\n🔍 Testing Property Update...")
+        
+        if not self.test_property_id:
+            self.log_result("Update property", False, "No test property ID available")
+            return
+            
+        update_data = {
+            "title": "Updated Test Apartment",
+            "price": 2750000.0,
+            "description": "Updated description with new features"
+        }
+        
+        success, data, _ = self.make_request('PUT', f'properties/{self.test_property_id}', update_data, 200)
+        
+        if success and data.get('title') == update_data['title']:
+            self.log_result("Update property", True)
+        else:
+            self.log_result("Update property", False, str(data))
+
+    def test_visitor_registration(self):
+        """Test visitor registration for property viewing"""
+        print("\n🔍 Testing Visitor Registration...")
+        
+        if not self.test_property_id:
+            self.log_result("Visitor registration", False, "No test property ID available")
+            return
+            
+        visitor_data = {
+            "property_id": self.test_property_id,
+            "first_name": "Test",
+            "last_name": "Visitor",
+            "phone": "05559876543"
+        }
+        
+        success, data, _ = self.make_request('POST', 'visitors/register', visitor_data, 200)
+        
+        if success and 'id' in data:
+            self.visitor_id = data['id']
+            self.log_result("Visitor registration", True)
+        else:
+            self.log_result("Visitor registration", False, str(data))
+
+    def test_visit_recording(self):
+        """Test visit recording with visitor ID"""
+        print("\n🔍 Testing Visit Recording...")
+        
+        if not hasattr(self, 'visitor_id') or not self.test_property_id:
+            self.log_result("Visit recording", False, "No visitor ID or property ID available")
+            return
+            
+        visit_data = {
+            "property_id": self.test_property_id,
+            "visitor_id": self.visitor_id,
+            "duration": 120,
+            "rooms_visited": ["room-1", "room-2"]
+        }
+        
+        success, data, _ = self.make_request('POST', 'visits', visit_data, 200)
+        
+        if success and 'message' in data:
+            self.log_result("Visit recording", True)
+        else:
+            self.log_result("Visit recording", False, str(data))
+
+    def test_unauthorized_access(self):
+        """Test accessing protected endpoints without token"""
+        print("\n🔍 Testing Unauthorized Access...")
+        
+        # Temporarily remove token
+        original_token = self.token
+        self.token = None
+        
+        success, data, _ = self.make_request('GET', 'properties', expected_status=401)
+        self.log_result("Unauthorized access rejection", success)
+        
+        # Restore token
+        self.token = original_token
+
+    def test_analytics(self):
+        """Test analytics endpoints"""
+        print("\n🔍 Testing Analytics...")
+        
+        success, data, _ = self.make_request('GET', 'analytics', expected_status=200)
+        
+        if success and 'total_views' in data and 'total_duration' in data:
+            self.log_result("Get analytics", True)
+            
+            # Verify analytics structure
+            required_fields = ['total_views', 'total_duration', 'avg_duration', 'daily_views', 'top_properties']
+            all_fields_present = all(field in data for field in required_fields)
+            self.log_result("Analytics data structure", all_fields_present)
+        else:
+            self.log_result("Get analytics", False, str(data))
+
+    def test_property_visits(self):
+        """Test getting visits for a specific property"""
+        print("\n🔍 Testing Property Visits...")
+        
+        if not self.test_property_id:
+            self.log_result("Get property visits", False, "No test property ID available")
+            return
+            
+        success, data, _ = self.make_request('GET', f'properties/{self.test_property_id}/visits', expected_status=200)
+        
+        if success and isinstance(data, list):
+            self.log_result("Get property visits", True)
+        else:
+            self.log_result("Get property visits", False, str(data))
+
+    def test_invalid_login(self):
+        """Test login with invalid credentials"""
+        print("\n🔍 Testing Invalid Login...")
+        
+        invalid_login_data = {
+            "email": "nonexistent@example.com",
+            "password": "wrongpassword"
+        }
+        
+        success, data, _ = self.make_request('POST', 'auth/login', invalid_login_data, 401)
+        self.log_result("Invalid login rejection", success)
+
+    def test_admin_setup(self):
+        """Test admin setup endpoint"""
+        print("\n🔍 Testing Admin Setup...")
+        
+        success, data, _ = self.make_request('POST', 'setup-admin', expected_status=200)
+        
+        if success and 'message' in data:
+            self.log_result("Admin setup", True)
+        elif 'Admin zaten mevcut' in str(data):
+            self.log_result("Admin setup (already exists)", True)
+        else:
+            self.log_result("Admin setup", False, str(data))
+
+    def test_admin_login(self):
+        """Test admin login with mekan360 credentials"""
+        print("\n🔍 Testing Admin Login...")
+        
+        admin_login_data = {
+            "email": "yadigrb",
+            "password": "Yadigar34"
+        }
+        
+        success, data, _ = self.make_request('POST', 'admin/login', admin_login_data, 200)
+        
+        if success and 'access_token' in data:
+            self.admin_token = data['access_token']
+            self.log_result("Admin login (mekan360)", True)
+        else:
+            self.log_result("Admin login (mekan360)", False, str(data))
+
+    def test_admin_stats(self):
+        """Test admin stats endpoint"""
+        print("\n🔍 Testing Admin Stats...")
+        
+        if not hasattr(self, 'admin_token'):
+            self.log_result("Admin stats", False, "No admin token available")
+            return
+            
+        # Temporarily use admin token
+        original_token = self.token
+        self.token = self.admin_token
+        
+        success, data, _ = self.make_request('GET', 'admin/stats', expected_status=200)
+        
+        if success and 'total_users' in data:
+            self.log_result("Admin stats", True)
+        else:
+            self.log_result("Admin stats", False, str(data))
+            
+        # Restore original token
+        self.token = original_token
+
+    def test_packages_endpoint(self):
+        """Test packages endpoint"""
+        print("\n🔍 Testing Packages Endpoint...")
+        
+        success, data, _ = self.make_request('GET', 'packages', expected_status=200)
+        
+        if success and 'starter' in data and 'premium' in data and 'ultra' in data:
+            self.log_result("Get packages", True)
+        else:
+            self.log_result("Get packages", False, str(data))
+
+    def test_delete_property(self):
+        """Test deleting a property (run last)"""
+        print("\n🔍 Testing Property Deletion...")
+        
+        if not self.test_property_id:
+            self.log_result("Delete property", False, "No test property ID available")
+            return
+            
+        success, data, _ = self.make_request('DELETE', f'properties/{self.test_property_id}', expected_status=200)
+        
+        if success and 'message' in data:
+            self.log_result("Delete property", True)
+        else:
+            self.log_result("Delete property", False, str(data))
+
+    # ==================== GROUP MANAGEMENT TESTS ====================
+
+    def test_create_group(self):
+        """Test creating a new property group"""
+        print("\n🔍 Testing Group Creation...")
+        
+        group_data = {
+            "name": "Test Group",
+            "description": "Test description for group management",
+            "property_ids": []
+        }
+        
+        success, data, status_code = self.make_request('POST', 'groups', group_data, 200)
+        
+        # Accept both 200 and 201 as valid for group creation
+        if not success and status_code == 201:
+            success = True
+            
+        if success and 'id' in data:
+            self.test_group_id = data['id']
+            self.log_result("Create group", True)
+            
+            # Verify group data
+            if data.get('name') == group_data['name'] and data.get('description') == group_data['description']:
+                self.log_result("Group data accuracy", True)
+            else:
+                self.log_result("Group data accuracy", False, f"Expected name: {group_data['name']}, got: {data.get('name')}")
+        else:
+            self.log_result("Create group", False, f"Status: {status_code}, Data: {str(data)}")
+
+    def test_get_groups(self):
+        """Test getting user groups"""
+        print("\n🔍 Testing Get Groups...")
+        
+        success, data, _ = self.make_request('GET', 'groups', expected_status=200)
+        
+        if success and isinstance(data, list):
+            self.log_result("Get groups list", True)
+            
+            # Check if our test group is in the list
+            if self.test_group_id:
+                group_found = any(g.get('id') == self.test_group_id for g in data)
+                self.log_result("Test group in list", group_found)
+        else:
+            self.log_result("Get groups list", False, str(data))
+
+    def test_get_single_group(self):
+        """Test getting a single group by ID"""
+        print("\n🔍 Testing Get Single Group...")
+        
+        if not self.test_group_id:
+            self.log_result("Get single group", False, "No test group ID available")
+            return
+            
+        success, data, _ = self.make_request('GET', f'groups/{self.test_group_id}', expected_status=200)
+        
+        if success and data.get('id') == self.test_group_id:
+            self.log_result("Get single group", True)
+            
+            # Verify group data
+            expected_fields = ['name', 'description', 'property_ids', 'share_link']
+            all_fields_present = all(field in data for field in expected_fields)
+            self.log_result("Group data completeness", all_fields_present)
+        else:
+            self.log_result("Get single group", False, str(data))
+
+    def test_update_group(self):
+        """Test updating a group"""
+        print("\n🔍 Testing Group Update...")
+        
+        if not self.test_group_id:
+            self.log_result("Update group", False, "No test group ID available")
+            return
+            
+        update_data = {
+            "name": "Updated Test Group",
+            "description": "Updated description with new features"
+        }
+        
+        success, data, _ = self.make_request('PUT', f'groups/{self.test_group_id}', update_data, 200)
+        
+        if success and data.get('name') == update_data['name']:
+            self.log_result("Update group", True)
+        else:
+            self.log_result("Update group", False, str(data))
+
+    def test_add_property_to_group(self):
+        """Test adding a property to a group"""
+        print("\n🔍 Testing Add Property to Group...")
+        
+        if not self.test_group_id or not self.test_property_id:
+            self.log_result("Add property to group", False, "No test group ID or property ID available")
+            return
+            
+        success, data, _ = self.make_request('POST', f'groups/{self.test_group_id}/properties/{self.test_property_id}', expected_status=200)
+        
+        if success and 'message' in data:
+            self.log_result("Add property to group", True)
+            
+            # Verify property was added by getting the group
+            success_verify, group_data, _ = self.make_request('GET', f'groups/{self.test_group_id}', expected_status=200)
+            if success_verify and self.test_property_id in group_data.get('property_ids', []):
+                self.log_result("Property added verification", True)
+            else:
+                self.log_result("Property added verification", False, "Property not found in group")
+        else:
+            self.log_result("Add property to group", False, str(data))
+
+    def test_remove_property_from_group(self):
+        """Test removing a property from a group"""
+        print("\n🔍 Testing Remove Property from Group...")
+        
+        if not self.test_group_id or not self.test_property_id:
+            self.log_result("Remove property from group", False, "No test group ID or property ID available")
+            return
+            
+        success, data, _ = self.make_request('DELETE', f'groups/{self.test_group_id}/properties/{self.test_property_id}', expected_status=200)
+        
+        if success and 'message' in data:
+            self.log_result("Remove property from group", True)
+            
+            # Verify property was removed by getting the group
+            success_verify, group_data, _ = self.make_request('GET', f'groups/{self.test_group_id}', expected_status=200)
+            if success_verify and self.test_property_id not in group_data.get('property_ids', []):
+                self.log_result("Property removed verification", True)
+            else:
+                self.log_result("Property removed verification", False, "Property still found in group")
+        else:
+            self.log_result("Remove property from group", False, str(data))
+
+    def test_public_group_view(self):
+        """Test public group view endpoint"""
+        print("\n🔍 Testing Public Group View...")
+        
+        if not self.test_group_id:
+            self.log_result("Public group view", False, "No test group ID available")
+            return
+            
+        # Test without authentication (public endpoint)
+        original_token = self.token
+        self.token = None
+        
+        success, data, _ = self.make_request('GET', f'public/groups/{self.test_group_id}', expected_status=200)
+        
+        if success and 'group' in data and 'properties' in data:
+            self.log_result("Public group view", True)
+            
+            # Verify group data structure
+            group_data = data.get('group', {})
+            if group_data.get('id') == self.test_group_id:
+                self.log_result("Public group data accuracy", True)
+            else:
+                self.log_result("Public group data accuracy", False, f"Expected ID: {self.test_group_id}, got: {group_data.get('id')}")
+                
+            # Verify properties list is present (even if empty)
+            if isinstance(data.get('properties'), list):
+                self.log_result("Public group properties structure", True)
+            else:
+                self.log_result("Public group properties structure", False, "Properties should be a list")
+        else:
+            self.log_result("Public group view", False, str(data))
+            
+        # Restore token
+        self.token = original_token
+
+    def test_delete_group(self):
+        """Test deleting a group (run after other group tests)"""
+        print("\n🔍 Testing Group Deletion...")
+        
+        if not self.test_group_id:
+            self.log_result("Delete group", False, "No test group ID available")
+            return
+            
+        success, data, _ = self.make_request('DELETE', f'groups/{self.test_group_id}', expected_status=200)
+        
+        if success and 'message' in data:
+            self.log_result("Delete group", True)
+        else:
+            self.log_result("Delete group", False, str(data))
+
+    def run_all_tests(self):
+        """Run all backend tests"""
+        print("🚀 Starting mekan360 Backend API Tests")
+        print(f"📍 Testing against: {self.base_url}")
+        print("=" * 60)
+        
+        # Test sequence
+        self.test_health_check()
+        self.test_packages_endpoint()
+        
+        # Admin tests
+        self.test_admin_setup()
+        self.test_admin_login()
+        self.test_admin_stats()
+        
+        # User registration and authentication
+        self.test_user_registration()
+        self.test_payment_completion()
+        self.test_user_login()
+        self.test_get_user_profile()
+        
+        # Property management
+        self.test_create_property()
+        self.test_get_properties()
+        self.test_get_single_property()
+        self.test_update_property()
+        
+        # Group management tests (NEW)
+        self.test_create_group()
+        self.test_get_groups()
+        self.test_get_single_group()
+        self.test_update_group()
+        self.test_add_property_to_group()
+        self.test_remove_property_from_group()
+        self.test_public_group_view()
+        
+        # Visitor and analytics
+        self.test_visitor_registration()
+        self.test_visit_recording()
+        self.test_analytics()
+        self.test_property_visits()
+        
+        # Security tests
+        self.test_invalid_login()
+        self.test_unauthorized_access()
+        
+        # Cleanup tests (run last)
+        self.test_delete_group()
+        self.test_delete_property()
+        
+        # Print summary
+        print("\n" + "=" * 60)
+        print("📊 TEST SUMMARY")
+        print("=" * 60)
+        print(f"✅ Tests Passed: {self.tests_passed}/{self.tests_run}")
+        print(f"❌ Tests Failed: {len(self.failed_tests)}/{self.tests_run}")
+        
+        if self.failed_tests:
+            print("\n🔍 FAILED TESTS:")
+            for failure in self.failed_tests:
+                print(f"   • {failure['test']}: {failure['details']}")
+        
+        success_rate = (self.tests_passed / self.tests_run) * 100 if self.tests_run > 0 else 0
+        print(f"\n📈 Success Rate: {success_rate:.1f}%")
+        
+        return self.tests_passed == self.tests_run
+
+def main():
+    """Main test execution"""
+    tester = HomeViewProAPITester()
+    
+    try:
+        all_passed = tester.run_all_tests()
+        return 0 if all_passed else 1
+    except Exception as e:
+        print(f"\n💥 Test execution failed: {str(e)}")
+        return 1
+
+if __name__ == "__main__":
+    sys.exit(main())

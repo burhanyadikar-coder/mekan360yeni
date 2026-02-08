@@ -1,0 +1,17 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 200 60">
+  <defs>
+    <linearGradient id="logoGrad" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" style="stop-color:#0D5C4D;stop-opacity:1" />
+      <stop offset="100%" style="stop-color:#1A7A6A;stop-opacity:1" />
+    </linearGradient>
+  </defs>
+  <!-- Icon circle -->
+  <circle cx="30" cy="30" r="28" fill="url(#logoGrad)"/>
+  <!-- M Letter -->
+  <text x="30" y="38" font-family="Arial, sans-serif" font-size="24" font-weight="bold" fill="white" text-anchor="middle">M</text>
+  <!-- 360 rotating arrow -->
+  <path d="M 45 12 A 18 18 0 1 1 27 8" fill="none" stroke="#D4AF37" stroke-width="2.5" stroke-linecap="round"/>
+  <polygon points="45,7 50,12 45,17" fill="#D4AF37"/>
+  <!-- Text -->
+  <text x="70" y="38" font-family="Arial, sans-serif" font-size="26" font-weight="600" fill="#0D5C4D">mekan360</text>
+</svg>
