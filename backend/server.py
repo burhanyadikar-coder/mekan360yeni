@@ -2,7 +2,7 @@ from fastapi import FastAPI, APIRouter, HTTPException, Depends, status
 from fastapi.security import HTTPBearer, HTTPAuthorizationCredentials
 from dotenv import load_dotenv
 from starlette.middleware.cors import CORSMiddleware
-from supabase import create_client, Client
+from motor.motor_asyncio import AsyncIOMotorClient
 import os
 import logging
 import asyncio
@@ -22,32 +22,25 @@ import hashlib
 ROOT_DIR = Path(__file__).parent
 load_dotenv(ROOT_DIR / '.env')
 
-# Bunny CDN Configuration
 BUNNY_STORAGE_ZONE = os.environ.get('BUNNY_STORAGE_ZONE', '')
 BUNNY_API_KEY = os.environ.get('BUNNY_API_KEY', '')
 BUNNY_CDN_HOSTNAME = os.environ.get('BUNNY_CDN_HOSTNAME', '')
 BUNNY_STORAGE_REGION = os.environ.get('BUNNY_STORAGE_REGION', 'storage.bunnycdn.com')
 BUNNY_ENABLED = bool(BUNNY_STORAGE_ZONE and BUNNY_API_KEY)
 
-# Bunny CDN Upload Helper
 async def upload_to_bunny(file_content: bytes, file_path: str, content_type: str = "image/jpeg") -> Optional[str]:
-    """Upload file to Bunny CDN Storage and return CDN URL"""
     if not BUNNY_ENABLED:
         return None
-
     try:
         url = f"https://{BUNNY_STORAGE_REGION}/{BUNNY_STORAGE_ZONE}/{file_path}"
         checksum = hashlib.sha256(file_content).hexdigest().upper()
-
         headers = {
             "AccessKey": BUNNY_API_KEY,
             "Content-Type": content_type,
             "Checksum": checksum
         }
-
         async with httpx.AsyncClient() as client:
             response = await client.put(url, content=file_content, headers=headers, timeout=60.0)
-
         if response.status_code == 201:
             cdn_url = f"https://{BUNNY_CDN_HOSTNAME}/{file_path}"
             logging.info(f"Uploaded to Bunny CDN: {cdn_url}")
@@ -60,45 +53,35 @@ async def upload_to_bunny(file_content: bytes, file_path: str, content_type: str
         return None
 
 async def delete_from_bunny(file_path: str) -> bool:
-    """Delete file from Bunny CDN Storage"""
     if not BUNNY_ENABLED:
         return False
-
     try:
         url = f"https://{BUNNY_STORAGE_REGION}/{BUNNY_STORAGE_ZONE}/{file_path}"
         headers = {"AccessKey": BUNNY_API_KEY}
-
         async with httpx.AsyncClient() as client:
             response = await client.delete(url, headers=headers, timeout=30.0)
-
         return response.status_code in [200, 204]
     except Exception as e:
         logging.error(f"Bunny delete error: {e}")
         return False
 
 def base64_to_bytes(base64_string: str) -> tuple:
-    """Convert base64 string to bytes and return (bytes, content_type)"""
     if ',' in base64_string:
         header, data = base64_string.split(',', 1)
         content_type = header.split(':')[1].split(';')[0] if ':' in header else 'image/jpeg'
     else:
         data = base64_string
         content_type = 'image/jpeg'
-
     return base64.b64decode(data), content_type
 
 async def upload_base64_to_bunny(base64_string: str, folder: str, filename: str = None) -> Optional[str]:
-    """Upload base64 image to Bunny CDN"""
     if not BUNNY_ENABLED or not base64_string:
         return None
-
     try:
         file_content, content_type = base64_to_bytes(base64_string)
-
         if not filename:
             ext = 'jpg' if 'jpeg' in content_type else content_type.split('/')[-1]
             filename = f"{uuid.uuid4()}.{ext}"
-
         file_path = f"{folder}/{filename}"
         return await upload_to_bunny(file_content, file_path, content_type)
     except Exception as e:
@@ -106,15 +89,12 @@ async def upload_base64_to_bunny(base64_string: str, folder: str, filename: str 
         return None
 
 async def process_room_photos_for_bunny(rooms: List[Dict], property_id: str) -> List[Dict]:
-    """Process room photos - upload to Bunny CDN and replace base64 with URLs"""
     if not BUNNY_ENABLED:
         return rooms
-
     processed_rooms = []
     for room in rooms:
         room_copy = dict(room)
         room_id = room.get('id', str(uuid.uuid4()))
-
         if room_copy.get('photos'):
             new_photos = []
             for i, photo in enumerate(room_copy['photos']):
@@ -128,7 +108,6 @@ async def process_room_photos_for_bunny(rooms: List[Dict], property_id: str) -> 
                 else:
                     new_photos.append(photo)
             room_copy['photos'] = new_photos
-
         if room_copy.get('panorama_photo') and room_copy['panorama_photo'].startswith('data:'):
             cdn_url = await upload_base64_to_bunny(
                 room_copy['panorama_photo'],
@@ -137,42 +116,32 @@ async def process_room_photos_for_bunny(rooms: List[Dict], property_id: str) -> 
             )
             if cdn_url:
                 room_copy['panorama_photo'] = cdn_url
-
         processed_rooms.append(room_copy)
-
     return processed_rooms
 
 def compress_base64_image(base64_string: str, max_size_kb: int = 500) -> str:
-    """Compress base64 image to reduce size"""
     try:
         if ',' in base64_string:
             header, data = base64_string.split(',', 1)
         else:
             header = 'data:image/jpeg;base64'
             data = base64_string
-
         image_data = base64.b64decode(data)
-
         current_size_kb = len(image_data) / 1024
         if current_size_kb <= max_size_kb:
             return base64_string
-
         try:
             from PIL import Image
             img = Image.open(BytesIO(image_data))
-
             if img.mode in ('RGBA', 'P'):
                 img = img.convert('RGB')
-
             max_width = 1920
             if img.width > max_width:
                 ratio = max_width / img.width
                 new_size = (max_width, int(img.height * ratio))
                 img = img.resize(new_size, Image.LANCZOS)
-
             quality = 85
             output = BytesIO()
-
             while quality > 20:
                 output.seek(0)
                 output.truncate()
@@ -180,7 +149,6 @@ def compress_base64_image(base64_string: str, max_size_kb: int = 500) -> str:
                 if len(output.getvalue()) / 1024 <= max_size_kb:
                     break
                 quality -= 10
-
             compressed_data = base64.b64encode(output.getvalue()).decode()
             return f"data:image/jpeg;base64,{compressed_data}"
         except ImportError:
@@ -191,7 +159,6 @@ def compress_base64_image(base64_string: str, max_size_kb: int = 500) -> str:
         return base64_string
 
 def compress_room_photos(rooms: List[Dict]) -> List[Dict]:
-    """Compress all photos in room data"""
     for room in rooms:
         if room.get('photos'):
             room['photos'] = [compress_base64_image(p) for p in room['photos']]
@@ -199,36 +166,51 @@ def compress_room_photos(rooms: List[Dict]) -> List[Dict]:
             room['panorama_photo'] = compress_base64_image(room['panorama_photo'], max_size_kb=800)
     return rooms
 
-# Supabase connection
-supabase_url = os.environ.get('SUPABASE_URL')
-supabase_key = os.environ.get('SUPABASE_SERVICE_ROLE_KEY')
+MONGO_URL = os.environ.get('MONGO_URL', 'mongodb://localhost:27017')
+MONGO_DB = os.environ.get('MONGO_DB', 'mekan360')
 
-if not supabase_url or not supabase_key:
-    raise ValueError("SUPABASE_URL and SUPABASE_SERVICE_ROLE_KEY must be set")
+client: AsyncIOMotorClient = None
+db = None
 
-supabase: Client = create_client(supabase_url, supabase_key)
+async def connect_db():
+    global client, db
+    client = AsyncIOMotorClient(MONGO_URL)
+    db = client[MONGO_DB]
+    await db.users.create_index("email", unique=True)
+    await db.properties.create_index("user_id")
+    await db.visitors.create_index([("property_id", 1), ("phone", 1)])
+    await db.groups.create_index("user_id")
+    logging.info(f"Connected to MongoDB: {MONGO_DB}")
 
-# JWT Settings
+async def close_db():
+    global client
+    if client:
+        client.close()
+
 JWT_SECRET = os.environ.get('JWT_SECRET', 'homeview-pro-secret-key-2024')
 JWT_ALGORITHM = "HS256"
 JWT_EXPIRATION_HOURS = 24
-ADMIN_SECRET = os.environ.get('ADMIN_SECRET', 'admin-secret-2024')
 
-# Resend Email (optional)
 RESEND_API_KEY = os.environ.get('RESEND_API_KEY')
 SENDER_EMAIL = os.environ.get('SENDER_EMAIL', 'onboarding@resend.dev')
-FRONTEND_URL = os.environ.get('FRONTEND_URL', 'https://urgent-repair-1.preview.emergentagent.com')
+FRONTEND_URL = os.environ.get('FRONTEND_URL', 'https://mekan360.com.tr')
 
-app = FastAPI(title="HomeView Pro API")
+app = FastAPI(title="Mekan360 API")
 api_router = APIRouter(prefix="/api")
 admin_router = APIRouter(prefix="/api/admin")
 security = HTTPBearer()
 
-# ==================== PACKAGES ====================
+@app.on_event("startup")
+async def startup():
+    await connect_db()
+
+@app.on_event("shutdown")
+async def shutdown():
+    await close_db()
 
 PACKAGES = {
     "free": {
-        "name": "Ücretsiz Paket",
+        "name": "Ucretsiz Paket",
         "price": 0,
         "property_limit": 1,
         "features": ["regular_photos", "mapping"],
@@ -238,7 +220,7 @@ PACKAGES = {
         "auto_delete_days": 7
     },
     "starter": {
-        "name": "Başlangıç Paketi",
+        "name": "Baslangic Paketi",
         "price": 700,
         "property_limit": 10,
         "features": ["regular_photos", "mapping", "company_name", "sun_simulation"],
@@ -271,8 +253,6 @@ PACKAGES = {
         "contact_required": True
     }
 }
-
-# ==================== MODELS ====================
 
 class UserCreate(BaseModel):
     email: EmailStr
@@ -508,7 +488,13 @@ class GroupResponse(BaseModel):
     updated_at: str
     share_link: str
 
-# ==================== AUTH HELPERS ====================
+class ProfileUpdate(BaseModel):
+    first_name: Optional[str] = None
+    last_name: Optional[str] = None
+    company_name: Optional[str] = None
+    phone: Optional[str] = None
+    profile_photo: Optional[str] = None
+    company_logo: Optional[str] = None
 
 def hash_password(password: str) -> str:
     return bcrypt.hashpw(password.encode(), bcrypt.gensalt()).decode()
@@ -530,60 +516,49 @@ async def get_current_user(credentials: HTTPAuthorizationCredentials = Depends(s
         payload = jwt.decode(credentials.credentials, JWT_SECRET, algorithms=[JWT_ALGORITHM])
         user_id = payload.get("sub")
         if not user_id:
-            raise HTTPException(status_code=401, detail="Geçersiz token")
-
-        result = supabase.table("users").select("*").eq("id", user_id).execute()
-        if not result.data or len(result.data) == 0:
-            raise HTTPException(status_code=401, detail="Kullanıcı bulunamadı")
-
-        user = result.data[0]
+            raise HTTPException(status_code=401, detail="Gecersiz token")
+        user = await db.users.find_one({"id": user_id})
+        if not user:
+            raise HTTPException(status_code=401, detail="Kullanici bulunamadi")
         user.pop('password', None)
+        user.pop('_id', None)
         return user
     except jwt.ExpiredSignatureError:
-        raise HTTPException(status_code=401, detail="Token süresi dolmuş")
+        raise HTTPException(status_code=401, detail="Token suresi dolmus")
     except jwt.InvalidTokenError:
-        raise HTTPException(status_code=401, detail="Geçersiz token")
+        raise HTTPException(status_code=401, detail="Gecersiz token")
 
 async def get_admin_user(credentials: HTTPAuthorizationCredentials = Depends(security)):
     try:
         payload = jwt.decode(credentials.credentials, JWT_SECRET, algorithms=[JWT_ALGORITHM])
         if not payload.get("is_admin"):
             raise HTTPException(status_code=403, detail="Admin yetkisi gerekli")
-
         admin_id = payload.get("sub")
         return {"id": admin_id, "is_admin": True}
     except jwt.ExpiredSignatureError:
-        raise HTTPException(status_code=401, detail="Token süresi dolmuş")
+        raise HTTPException(status_code=401, detail="Token suresi dolmus")
     except jwt.InvalidTokenError:
-        raise HTTPException(status_code=401, detail="Geçersiz token")
-
-# ==================== EMAIL HELPER ====================
+        raise HTTPException(status_code=401, detail="Gecersiz token")
 
 async def send_email(to_email: str, subject: str, html_content: str):
-    """Send email using Resend API"""
     if not RESEND_API_KEY:
         logging.warning(f"[MOCK EMAIL] To: {to_email}, Subject: {subject}")
         return {"id": "mock-" + str(uuid.uuid4())}
-
     try:
         import resend
         resend.api_key = RESEND_API_KEY
-
         params = {
             "from": f"Mekan360 <{SENDER_EMAIL}>",
             "to": [to_email],
             "subject": subject,
             "html": html_content
         }
-
         result = await asyncio.to_thread(resend.Emails.send, params)
         logging.info(f"Email sent successfully to {to_email}, ID: {result.get('id', 'unknown')}")
         return result
     except Exception as e:
         logging.error(f"Resend email failed: {e}")
-        raise HTTPException(status_code=500, detail=f"E-posta gönderilemedi: {str(e)}")
-
-# ==================== AUTH ROUTES ====================
+        raise HTTPException(status_code=500, detail=f"E-posta gonderilemedi: {str(e)}")
 
 @api_router.get("/packages")
 async def get_packages():
@@ -591,27 +566,16 @@ async def get_packages():
 
 @api_router.post("/cleanup/free-properties")
 async def cleanup_free_properties():
-    """7 günden eski ücretsiz kullanıcı gayrimenkullerini siler"""
     try:
-        free_users_result = supabase.table("users").select("*").eq("package", "free").execute()
-        free_users = free_users_result.data
+        free_users = await db.users.find({"package": "free"}).to_list(1000)
         deleted_count = 0
-
         for user in free_users:
             user_id = user["id"]
             cutoff_date = (datetime.now(timezone.utc) - timedelta(days=7)).isoformat()
-
-            old_props = supabase.table("properties").select("id").eq("user_id", user_id).lt("created_at", cutoff_date).execute()
-
-            for prop in old_props.data:
-                supabase.table("properties").delete().eq("id", prop["id"]).execute()
-                deleted_count += 1
-
-            current_props = supabase.table("properties").select("id", count="exact").eq("user_id", user_id).execute()
-            current_count = current_props.count or 0
-
-            supabase.table("users").update({"property_count": current_count}).eq("id", user_id).execute()
-
+            result = await db.properties.delete_many({"user_id": user_id, "created_at": {"$lt": cutoff_date}})
+            deleted_count += result.deleted_count
+            current_count = await db.properties.count_documents({"user_id": user_id})
+            await db.users.update_one({"id": user_id}, {"$set": {"property_count": current_count}})
         return {"deleted_count": deleted_count, "message": f"{deleted_count} eski gayrimenkul silindi"}
     except Exception as e:
         logging.error(f"Cleanup error: {e}")
@@ -619,24 +583,19 @@ async def cleanup_free_properties():
 
 @api_router.post("/auth/register")
 async def register(user_data: UserCreate):
-    existing_result = supabase.table("users").select("*").eq("email", user_data.email).execute()
-    if existing_result.data and len(existing_result.data) > 0:
-        raise HTTPException(status_code=400, detail="Bu email zaten kayıtlı")
-
+    existing = await db.users.find_one({"email": user_data.email})
+    if existing:
+        raise HTTPException(status_code=400, detail="Bu email zaten kayitli")
     if user_data.package not in PACKAGES:
-        raise HTTPException(status_code=400, detail="Geçersiz paket")
-
+        raise HTTPException(status_code=400, detail="Gecersiz paket")
     if user_data.package == "corporate":
-        raise HTTPException(status_code=400, detail="Kurumsal paket için lütfen bizimle iletişime geçin: 0551 478 02 59")
-
+        raise HTTPException(status_code=400, detail="Kurumsal paket icin lutfen bizimle iletisime gecin: 0551 478 02 59")
     package_info = PACKAGES[user_data.package]
     user_id = str(uuid.uuid4())
     now = datetime.now(timezone.utc)
-
     is_free = package_info.get("is_free", False)
     subscription_status = "active" if is_free else "pending"
     subscription_end = (now + timedelta(days=365)).isoformat() if is_free else None
-
     user_doc = {
         "id": user_id,
         "email": user_data.email,
@@ -653,9 +612,7 @@ async def register(user_data: UserCreate):
         "created_at": now.isoformat(),
         "updated_at": now.isoformat()
     }
-
-    supabase.table("users").insert(user_doc).execute()
-
+    await db.users.insert_one(user_doc)
     if is_free:
         token = create_token(user_id, is_admin=False)
         return {
@@ -665,29 +622,24 @@ async def register(user_data: UserCreate):
             "package_name": package_info["name"],
             "amount": 0,
             "access_token": token,
-            "message": "Kayıt başarılı! Ücretsiz paketiniz aktif."
+            "message": "Kayit basarili! Ucretsiz paketiniz aktif."
         }
-
     return {
         "user_id": user_id,
         "email": user_data.email,
         "package": user_data.package,
         "package_name": package_info["name"],
         "amount": package_info["price"],
-        "message": "Kayıt oluşturuldu. Ödeme bekleniyor."
+        "message": "Kayit olusturuldu. Odeme bekleniyor."
     }
 
 @api_router.post("/auth/complete-payment")
 async def complete_payment(payment_data: PaymentCreate):
-    """Called after successful iyzico payment (MOCK for now)"""
-    user_result = supabase.table("users").select("*").eq("id", payment_data.user_id).execute()
-    if not user_result.data or len(user_result.data) == 0:
-        raise HTTPException(status_code=404, detail="Kullanıcı bulunamadı")
-
-    user = user_result.data[0]
+    user = await db.users.find_one({"id": payment_data.user_id})
+    if not user:
+        raise HTTPException(status_code=404, detail="Kullanici bulunamadi")
     now = datetime.now(timezone.utc)
     subscription_end = now + timedelta(days=30)
-
     payment_id = str(uuid.uuid4())
     payment_doc = {
         "id": payment_id,
@@ -698,19 +650,18 @@ async def complete_payment(payment_data: PaymentCreate):
         "payment_date": now.isoformat(),
         "next_payment_date": subscription_end.isoformat()
     }
-    supabase.table("payments").insert(payment_doc).execute()
-
-    supabase.table("users").update({
-        "subscription_status": "active",
-        "subscription_end": subscription_end.isoformat(),
-        "updated_at": now.isoformat()
-    }).eq("id", payment_data.user_id).execute()
-
+    await db.payments.insert_one(payment_doc)
+    await db.users.update_one(
+        {"id": payment_data.user_id},
+        {"$set": {
+            "subscription_status": "active",
+            "subscription_end": subscription_end.isoformat(),
+            "updated_at": now.isoformat()
+        }}
+    )
     token = create_token(payment_data.user_id)
-    updated_user_result = supabase.table("users").select("*").eq("id", payment_data.user_id).execute()
-    updated_user = updated_user_result.data[0]
+    updated_user = await db.users.find_one({"id": payment_data.user_id})
     package_info = PACKAGES[updated_user["package"]]
-
     return TokenResponse(
         access_token=token,
         user=UserResponse(
@@ -734,27 +685,20 @@ async def complete_payment(payment_data: PaymentCreate):
 
 @api_router.post("/auth/login", response_model=TokenResponse)
 async def login(user_data: UserLogin):
-    user_result = supabase.table("users").select("*").eq("email", user_data.email).execute()
-    if not user_result.data or len(user_result.data) == 0:
-        raise HTTPException(status_code=401, detail="Email veya şifre hatalı")
-
-    user = user_result.data[0]
-
+    user = await db.users.find_one({"email": user_data.email})
+    if not user:
+        raise HTTPException(status_code=401, detail="Email veya sifre hatali")
     if not verify_password(user_data.password, user["password"]):
-        raise HTTPException(status_code=401, detail="Email veya şifre hatalı")
-
+        raise HTTPException(status_code=401, detail="Email veya sifre hatali")
     if user.get("subscription_status") != "active":
-        raise HTTPException(status_code=403, detail="Aboneliğiniz aktif değil. Lütfen ödeme yapın.")
-
+        raise HTTPException(status_code=403, detail="Aboneliginiz aktif degil. Lutfen odeme yapin.")
     if user.get("subscription_end"):
         end_date = datetime.fromisoformat(user["subscription_end"])
         if end_date < datetime.now(timezone.utc):
-            supabase.table("users").update({"subscription_status": "expired"}).eq("id", user["id"]).execute()
-            raise HTTPException(status_code=403, detail="Aboneliğiniz sona erdi. Lütfen yenileyin.")
-
+            await db.users.update_one({"id": user["id"]}, {"$set": {"subscription_status": "expired"}})
+            raise HTTPException(status_code=403, detail="Aboneliginiz sona erdi. Lutfen yenileyin.")
     token = create_token(user["id"])
     package_info = PACKAGES[user["package"]]
-
     return TokenResponse(
         access_token=token,
         user=UserResponse(
@@ -799,22 +743,11 @@ async def get_me(current_user: dict = Depends(get_current_user)):
         created_at=current_user["created_at"]
     )
 
-class ProfileUpdate(BaseModel):
-    first_name: Optional[str] = None
-    last_name: Optional[str] = None
-    company_name: Optional[str] = None
-    phone: Optional[str] = None
-    profile_photo: Optional[str] = None
-    company_logo: Optional[str] = None
-
 @api_router.put("/auth/profile", response_model=UserResponse)
 async def update_profile(profile_data: ProfileUpdate, current_user: dict = Depends(get_current_user)):
-    """Kullanıcı profil bilgilerini güncelle"""
     update_data = {k: v for k, v in profile_data.model_dump().items() if v is not None}
-
     if not update_data:
-        raise HTTPException(status_code=400, detail="Güncellenecek veri yok")
-
+        raise HTTPException(status_code=400, detail="Guncellenecek veri yok")
     if BUNNY_ENABLED:
         if update_data.get('profile_photo') and update_data['profile_photo'].startswith('data:'):
             cdn_url = await upload_base64_to_bunny(
@@ -824,7 +757,6 @@ async def update_profile(profile_data: ProfileUpdate, current_user: dict = Depen
             )
             if cdn_url:
                 update_data['profile_photo'] = cdn_url
-
         if update_data.get('company_logo') and update_data['company_logo'].startswith('data:'):
             cdn_url = await upload_base64_to_bunny(
                 update_data['company_logo'],
@@ -838,13 +770,9 @@ async def update_profile(profile_data: ProfileUpdate, current_user: dict = Depen
             update_data['profile_photo'] = compress_base64_image(update_data['profile_photo'], max_size_kb=200)
         if update_data.get('company_logo'):
             update_data['company_logo'] = compress_base64_image(update_data['company_logo'], max_size_kb=200)
-
-    supabase.table("users").update(update_data).eq("id", current_user["id"]).execute()
-
-    updated_user_result = supabase.table("users").select("*").eq("id", current_user["id"]).execute()
-    updated_user = updated_user_result.data[0]
+    await db.users.update_one({"id": current_user["id"]}, {"$set": update_data})
+    updated_user = await db.users.find_one({"id": current_user["id"]})
     package_info = PACKAGES[updated_user["package"]]
-
     return UserResponse(
         id=updated_user["id"],
         email=updated_user["email"],
@@ -867,104 +795,70 @@ async def update_profile(profile_data: ProfileUpdate, current_user: dict = Depen
 
 @api_router.post("/auth/forgot-password")
 async def forgot_password(request: PasswordResetRequest):
-    user_result = supabase.table("users").select("*").eq("email", request.email).execute()
-    if not user_result.data or len(user_result.data) == 0:
-        return {"message": "Şifre sıfırlama linki e-posta adresinize gönderildi."}
-
-    user = user_result.data[0]
-
+    user = await db.users.find_one({"email": request.email})
+    if not user:
+        return {"message": "Sifre sifirlama linki e-posta adresinize gonderildi."}
     reset_token = secrets.token_urlsafe(32)
     expiry = datetime.now(timezone.utc) + timedelta(hours=1)
-
-    supabase.table("password_resets").insert({
+    await db.password_resets.insert_one({
         "user_id": user["id"],
         "token": reset_token,
         "expires_at": expiry.isoformat(),
         "used": False
-    }).execute()
-
+    })
     reset_link = f"{FRONTEND_URL}/reset-password?token={reset_token}"
     html_content = f"""
     <!DOCTYPE html>
     <html>
-    <head>
-        <meta charset="UTF-8">
-        <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    </head>
+    <head><meta charset="UTF-8"></head>
     <body style="margin:0;padding:0;font-family:Arial,sans-serif;background-color:#f4f4f4;">
         <table width="100%" cellpadding="0" cellspacing="0" style="max-width:600px;margin:0 auto;background-color:#ffffff;">
             <tr>
                 <td style="background:linear-gradient(135deg,#064E3B 0%,#0D5C4D 100%);padding:30px;text-align:center;">
                     <h1 style="color:#ffffff;margin:0;font-size:28px;">Mekan360</h1>
-                    <p style="color:#10B981;margin:10px 0 0;font-size:14px;">Premium Daire Tanıtım Sistemi</p>
                 </td>
             </tr>
             <tr>
                 <td style="padding:40px 30px;">
-                    <h2 style="color:#064E3B;margin:0 0 20px;font-size:24px;">Şifre Sıfırlama</h2>
-                    <p style="color:#333333;font-size:16px;line-height:1.6;">Merhaba <strong>{user['first_name']}</strong>,</p>
-                    <p style="color:#666666;font-size:14px;line-height:1.6;">Hesabınız için şifre sıfırlama talebinde bulundunuz. Şifrenizi sıfırlamak için aşağıdaki butona tıklayın:</p>
+                    <h2 style="color:#064E3B;margin:0 0 20px;">Sifre Sifirlama</h2>
+                    <p>Merhaba <strong>{user['first_name']}</strong>,</p>
+                    <p>Sifrenizi sifirlamak icin asagidaki butona tiklayin:</p>
                     <div style="text-align:center;margin:30px 0;">
-                        <a href="{reset_link}" style="background:linear-gradient(135deg,#064E3B 0%,#0D5C4D 100%);color:#ffffff;padding:15px 40px;text-decoration:none;border-radius:30px;display:inline-block;font-weight:bold;font-size:16px;">Şifremi Sıfırla</a>
+                        <a href="{reset_link}" style="background:#064E3B;color:#ffffff;padding:15px 40px;text-decoration:none;border-radius:30px;display:inline-block;">Sifremi Sifirla</a>
                     </div>
-                    <p style="color:#999999;font-size:12px;line-height:1.6;">Bu link <strong>1 saat</strong> süreyle geçerlidir.</p>
-                    <p style="color:#999999;font-size:12px;line-height:1.6;">Bu işlemi siz yapmadıysanız, bu e-postayı görmezden gelebilirsiniz. Hesabınız güvende.</p>
-                </td>
-            </tr>
-            <tr>
-                <td style="background-color:#f8f8f8;padding:20px 30px;text-align:center;border-top:1px solid #eeeeee;">
-                    <p style="color:#999999;font-size:12px;margin:0;">© 2024 Mekan360. Tüm hakları saklıdır.</p>
-                    <p style="color:#999999;font-size:11px;margin:5px 0 0;">
-                        <a href="https://mekan360.com.tr" style="color:#064E3B;text-decoration:none;">mekan360.com.tr</a>
-                    </p>
+                    <p style="color:#999999;font-size:12px;">Bu link 1 saat gecerlidir.</p>
                 </td>
             </tr>
         </table>
     </body>
     </html>
     """
-
-    await send_email(request.email, "Mekan360 - Şifre Sıfırlama", html_content)
-
-    return {"message": "Şifre sıfırlama linki e-posta adresinize gönderildi."}
+    await send_email(request.email, "Mekan360 - Sifre Sifirlama", html_content)
+    return {"message": "Sifre sifirlama linki e-posta adresinize gonderildi."}
 
 @api_router.post("/auth/reset-password")
 async def reset_password(request: PasswordResetConfirm):
-    reset_result = supabase.table("password_resets").select("*").eq("token", request.token).eq("used", False).execute()
-
-    if not reset_result.data or len(reset_result.data) == 0:
-        raise HTTPException(status_code=400, detail="Geçersiz veya kullanılmış token")
-
-    reset_record = reset_result.data[0]
-
+    reset_record = await db.password_resets.find_one({"token": request.token, "used": False})
+    if not reset_record:
+        raise HTTPException(status_code=400, detail="Gecersiz veya kullanilmis token")
     expiry = datetime.fromisoformat(reset_record["expires_at"])
     if expiry < datetime.now(timezone.utc):
-        raise HTTPException(status_code=400, detail="Token süresi dolmuş")
-
-    supabase.table("users").update({"password": hash_password(request.new_password)}).eq("id", reset_record["user_id"]).execute()
-
-    supabase.table("password_resets").update({"used": True}).eq("token", request.token).execute()
-
-    return {"message": "Şifreniz başarıyla güncellendi."}
-
-# ==================== PROPERTY ROUTES ====================
+        raise HTTPException(status_code=400, detail="Token suresi dolmus")
+    await db.users.update_one({"id": reset_record["user_id"]}, {"$set": {"password": hash_password(request.new_password)}})
+    await db.password_resets.update_one({"token": request.token}, {"$set": {"used": True}})
+    return {"message": "Sifreniz basariyla guncellendi."}
 
 @api_router.post("/properties", response_model=PropertyResponse)
 async def create_property(property_data: PropertyCreate, current_user: dict = Depends(get_current_user)):
     package_info = PACKAGES[current_user["package"]]
     property_count = current_user.get("property_count", 0)
-
     if package_info["property_limit"] != -1 and property_count >= package_info["property_limit"]:
-        raise HTTPException(status_code=403, detail=f"Paket limitinize ulaştınız ({package_info['property_limit']} gayrimenkul)")
-
+        raise HTTPException(status_code=403, detail=f"Paket limitinize ulastiniz ({package_info['property_limit']} gayrimenkul)")
     if property_data.view_type == "360" and not package_info["has_360"]:
-        raise HTTPException(status_code=403, detail="360° görüntüleme için Premium veya Ultra pakete yükseltin")
-
+        raise HTTPException(status_code=403, detail="360 goruntuleme icin Premium veya Ultra pakete yukseltin")
     property_id = str(uuid.uuid4())
     now = datetime.now(timezone.utc).isoformat()
-
     property_dict = property_data.model_dump()
-
     if BUNNY_ENABLED:
         if property_dict.get('rooms'):
             property_dict['rooms'] = await process_room_photos_for_bunny(
@@ -984,7 +878,6 @@ async def create_property(property_data: PropertyCreate, current_user: dict = De
             property_dict['rooms'] = compress_room_photos([dict(r) for r in property_dict['rooms']])
         if property_dict.get('cover_image'):
             property_dict['cover_image'] = compress_base64_image(property_dict['cover_image'])
-
     property_doc = {
         "id": property_id,
         "user_id": current_user["id"],
@@ -996,32 +889,24 @@ async def create_property(property_data: PropertyCreate, current_user: dict = De
         "updated_at": now,
         "share_link": f"/view/{property_id}"
     }
-
-    supabase.table("properties").insert(property_doc).execute()
-
-    supabase.table("users").update({
-        "property_count": property_count + 1
-    }).eq("id", current_user["id"]).execute()
-
+    await db.properties.insert_one(property_doc)
+    await db.users.update_one({"id": current_user["id"]}, {"$set": {"property_count": property_count + 1}})
+    property_doc.pop('_id', None)
     return PropertyResponse(**property_doc)
 
 @api_router.get("/properties", response_model=List[PropertyResponse])
 async def get_user_properties(current_user: dict = Depends(get_current_user)):
-    result = supabase.table("properties").select("*").eq("user_id", current_user["id"]).order("created_at", desc=True).limit(200).execute()
-
-    return [PropertyResponse(**p) for p in result.data]
+    cursor = db.properties.find({"user_id": current_user["id"]}).sort("created_at", -1).limit(200)
+    properties = await cursor.to_list(200)
+    return [PropertyResponse(**{k: v for k, v in p.items() if k != '_id'}) for p in properties]
 
 @api_router.get("/properties/{property_id}", response_model=PropertyResponse)
 async def get_property(property_id: str):
-    property_result = supabase.table("properties").select("*").eq("id", property_id).execute()
-    if not property_result.data or len(property_result.data) == 0:
-        raise HTTPException(status_code=404, detail="Gayrimenkul bulunamadı")
-
-    property_doc = property_result.data[0]
-
-    user_result = supabase.table("users").select("*").eq("id", property_doc["user_id"]).execute()
-    if user_result.data and len(user_result.data) > 0:
-        user_doc = user_result.data[0]
+    property_doc = await db.properties.find_one({"id": property_id})
+    if not property_doc:
+        raise HTTPException(status_code=404, detail="Gayrimenkul bulunamadi")
+    user_doc = await db.users.find_one({"id": property_doc["user_id"]})
+    if user_doc:
         property_doc["agent"] = AgentInfo(
             first_name=user_doc.get("first_name", ""),
             last_name=user_doc.get("last_name", ""),
@@ -1031,26 +916,17 @@ async def get_property(property_id: str):
             profile_photo=user_doc.get("profile_photo"),
             company_logo=user_doc.get("company_logo")
         )
-
+    property_doc.pop('_id', None)
     return PropertyResponse(**property_doc)
 
 @api_router.put("/properties/{property_id}", response_model=PropertyResponse)
-async def update_property(
-    property_id: str,
-    property_data: PropertyUpdate,
-    current_user: dict = Depends(get_current_user)
-):
-    property_result = supabase.table("properties").select("*").eq("id", property_id).execute()
-    if not property_result.data or len(property_result.data) == 0:
-        raise HTTPException(status_code=404, detail="Gayrimenkul bulunamadı")
-
-    property_doc = property_result.data[0]
-
+async def update_property(property_id: str, property_data: PropertyUpdate, current_user: dict = Depends(get_current_user)):
+    property_doc = await db.properties.find_one({"id": property_id})
+    if not property_doc:
+        raise HTTPException(status_code=404, detail="Gayrimenkul bulunamadi")
     if property_doc["user_id"] != current_user["id"]:
-        raise HTTPException(status_code=403, detail="Bu gayrimenkulü düzenleme yetkiniz yok")
-
+        raise HTTPException(status_code=403, detail="Bu gayrimenkulu duzenleme yetkiniz yok")
     update_data = {k: v for k, v in property_data.model_dump().items() if v is not None}
-
     if BUNNY_ENABLED:
         if update_data.get('rooms'):
             update_data['rooms'] = await process_room_photos_for_bunny(
@@ -1070,65 +946,44 @@ async def update_property(
             update_data['rooms'] = compress_room_photos([dict(r) for r in update_data['rooms']])
         if update_data.get('cover_image'):
             update_data['cover_image'] = compress_base64_image(update_data['cover_image'])
-
     update_data["updated_at"] = datetime.now(timezone.utc).isoformat()
-
-    supabase.table("properties").update(update_data).eq("id", property_id).execute()
-
-    updated_result = supabase.table("properties").select("*").eq("id", property_id).execute()
-    return PropertyResponse(**updated_result.data[0])
+    await db.properties.update_one({"id": property_id}, {"$set": update_data})
+    updated = await db.properties.find_one({"id": property_id})
+    updated.pop('_id', None)
+    return PropertyResponse(**updated)
 
 @api_router.delete("/properties/{property_id}")
 async def delete_property(property_id: str, current_user: dict = Depends(get_current_user)):
-    property_result = supabase.table("properties").select("*").eq("id", property_id).execute()
-    if not property_result.data or len(property_result.data) == 0:
-        raise HTTPException(status_code=404, detail="Gayrimenkul bulunamadı")
-
-    property_doc = property_result.data[0]
-
+    property_doc = await db.properties.find_one({"id": property_id})
+    if not property_doc:
+        raise HTTPException(status_code=404, detail="Gayrimenkul bulunamadi")
     if property_doc["user_id"] != current_user["id"]:
-        raise HTTPException(status_code=403, detail="Bu gayrimenkulü silme yetkiniz yok")
-
-    supabase.table("properties").delete().eq("id", property_id).execute()
-    supabase.table("visitors").delete().eq("property_id", property_id).execute()
-    supabase.table("visits").delete().eq("property_id", property_id).execute()
-
+        raise HTTPException(status_code=403, detail="Bu gayrimenkulu silme yetkiniz yok")
+    await db.properties.delete_one({"id": property_id})
+    await db.visitors.delete_many({"property_id": property_id})
+    await db.visits.delete_many({"property_id": property_id})
     current_count = current_user.get("property_count", 0)
     if current_count > 0:
-        supabase.table("users").update({
-            "property_count": current_count - 1
-        }).eq("id", current_user["id"]).execute()
-
-    return {"message": "Gayrimenkul başarıyla silindi"}
-
-# ==================== VISITOR ROUTES ====================
+        await db.users.update_one({"id": current_user["id"]}, {"$set": {"property_count": current_count - 1}})
+    return {"message": "Gayrimenkul basariyla silindi"}
 
 @api_router.post("/visitors/register", response_model=VisitorResponse)
 async def register_visitor(visitor_data: VisitorCreate):
-    """Register visitor before viewing property"""
-    property_result = supabase.table("properties").select("*").eq("id", visitor_data.property_id).execute()
-    if not property_result.data or len(property_result.data) == 0:
-        raise HTTPException(status_code=404, detail="Gayrimenkul bulunamadı")
-
-    property_doc = property_result.data[0]
-
-    existing_result = supabase.table("visitors").select("*").eq("property_id", visitor_data.property_id).eq("phone", visitor_data.phone).execute()
-
-    if existing_result.data and len(existing_result.data) > 0:
-        existing = existing_result.data[0]
+    property_doc = await db.properties.find_one({"id": visitor_data.property_id})
+    if not property_doc:
+        raise HTTPException(status_code=404, detail="Gayrimenkul bulunamadi")
+    existing = await db.visitors.find_one({"property_id": visitor_data.property_id, "phone": visitor_data.phone})
+    if existing:
         visit_count = existing.get("visit_count", 0)
-
-        supabase.table("visitors").update({
-            "visit_count": visit_count + 1,
-            "last_visit": datetime.now(timezone.utc).isoformat()
-        }).eq("id", existing["id"]).execute()
-
-        updated_result = supabase.table("visitors").select("*").eq("id", existing["id"]).execute()
-        return VisitorResponse(**updated_result.data[0])
-
+        await db.visitors.update_one(
+            {"id": existing["id"]},
+            {"$set": {"visit_count": visit_count + 1, "last_visit": datetime.now(timezone.utc).isoformat()}}
+        )
+        updated = await db.visitors.find_one({"id": existing["id"]})
+        updated.pop('_id', None)
+        return VisitorResponse(**updated)
     visitor_id = str(uuid.uuid4())
     now = datetime.now(timezone.utc).isoformat()
-
     visitor_doc = {
         "id": visitor_id,
         "property_id": visitor_data.property_id,
@@ -1142,34 +997,30 @@ async def register_visitor(visitor_data: VisitorCreate):
         "last_visit": now,
         "created_at": now
     }
-
-    supabase.table("visitors").insert(visitor_doc).execute()
-
+    await db.visitors.insert_one(visitor_doc)
+    visitor_doc.pop('_id', None)
     return VisitorResponse(**visitor_doc)
 
 @api_router.post("/visits")
 async def record_visit(visit_data: VisitCreate):
-    """Record visit duration and rooms visited"""
-    property_result = supabase.table("properties").select("*").eq("id", visit_data.property_id).execute()
-    if property_result.data and len(property_result.data) > 0:
-        prop = property_result.data[0]
-        supabase.table("properties").update({
-            "view_count": prop.get("view_count", 0) + 1,
-            "total_view_duration": prop.get("total_view_duration", 0) + visit_data.duration
-        }).eq("id", visit_data.property_id).execute()
-
-    visitor_result = supabase.table("visitors").select("*").eq("id", visit_data.visitor_id).execute()
-    if visitor_result.data and len(visitor_result.data) > 0:
-        visitor = visitor_result.data[0]
+    property_doc = await db.properties.find_one({"id": visit_data.property_id})
+    if property_doc:
+        await db.properties.update_one(
+            {"id": visit_data.property_id},
+            {"$inc": {"view_count": 1, "total_view_duration": visit_data.duration}}
+        )
+    visitor = await db.visitors.find_one({"id": visit_data.visitor_id})
+    if visitor:
         existing_rooms = visitor.get("rooms_visited", [])
         new_rooms = list(set(existing_rooms + visit_data.rooms_visited))
-
-        supabase.table("visitors").update({
-            "total_duration": visitor.get("total_duration", 0) + visit_data.duration,
-            "rooms_visited": new_rooms,
-            "last_visit": datetime.now(timezone.utc).isoformat()
-        }).eq("id", visit_data.visitor_id).execute()
-
+        await db.visitors.update_one(
+            {"id": visit_data.visitor_id},
+            {"$set": {
+                "total_duration": visitor.get("total_duration", 0) + visit_data.duration,
+                "rooms_visited": new_rooms,
+                "last_visit": datetime.now(timezone.utc).isoformat()
+            }}
+        )
     visit_id = str(uuid.uuid4())
     visit_doc = {
         "id": visit_id,
@@ -1179,78 +1030,59 @@ async def record_visit(visit_data: VisitCreate):
         "rooms_visited": visit_data.rooms_visited,
         "visited_at": datetime.now(timezone.utc).isoformat()
     }
-    supabase.table("visits").insert(visit_doc).execute()
-
+    await db.visits.insert_one(visit_doc)
     return {"message": "Ziyaret kaydedildi"}
 
 @api_router.get("/properties/{property_id}/visitors", response_model=List[VisitorResponse])
 async def get_property_visitors(property_id: str, current_user: dict = Depends(get_current_user)):
-    property_result = supabase.table("properties").select("*").eq("id", property_id).execute()
-    if not property_result.data or len(property_result.data) == 0:
-        raise HTTPException(status_code=404, detail="Gayrimenkul bulunamadı")
-
-    property_doc = property_result.data[0]
-
+    property_doc = await db.properties.find_one({"id": property_id})
+    if not property_doc:
+        raise HTTPException(status_code=404, detail="Gayrimenkul bulunamadi")
     if property_doc["user_id"] != current_user["id"]:
-        raise HTTPException(status_code=403, detail="Erişim yetkiniz yok")
-
-    visitors_result = supabase.table("visitors").select("*").eq("property_id", property_id).order("last_visit", desc=True).limit(100).execute()
-
-    return [VisitorResponse(**v) for v in visitors_result.data]
+        raise HTTPException(status_code=403, detail="Erisim yetkiniz yok")
+    cursor = db.visitors.find({"property_id": property_id}).sort("last_visit", -1).limit(100)
+    visitors = await cursor.to_list(100)
+    return [VisitorResponse(**{k: v for k, v in v.items() if k != '_id'}) for v in visitors]
 
 @api_router.get("/properties/{property_id}/visits")
 async def get_property_visits(property_id: str, current_user: dict = Depends(get_current_user)):
-    """Get visits for a specific property"""
-    property_result = supabase.table("properties").select("*").eq("id", property_id).execute()
-    if not property_result.data or len(property_result.data) == 0:
-        raise HTTPException(status_code=404, detail="Gayrimenkul bulunamadı")
-
-    property_doc = property_result.data[0]
-
+    property_doc = await db.properties.find_one({"id": property_id})
+    if not property_doc:
+        raise HTTPException(status_code=404, detail="Gayrimenkul bulunamadi")
     if property_doc["user_id"] != current_user["id"]:
-        raise HTTPException(status_code=403, detail="Erişim yetkiniz yok")
-
-    visits_result = supabase.table("visits").select("*").eq("property_id", property_id).order("visited_at", desc=True).limit(100).execute()
-
+        raise HTTPException(status_code=403, detail="Erisim yetkiniz yok")
+    cursor = db.visits.find({"property_id": property_id}).sort("visited_at", -1).limit(100)
+    visits = await cursor.to_list(100)
     result = []
-    for visit in visits_result.data:
-        visitor_result = supabase.table("visitors").select("*").eq("id", visit.get("visitor_id")).execute()
-        visitor = visitor_result.data[0] if visitor_result.data else None
+    for visit in visits:
+        visitor = await db.visitors.find_one({"id": visit.get("visitor_id")})
+        visit.pop('_id', None)
         result.append({
             **visit,
             "visitor_name": f"{visitor.get('first_name', '')} {visitor.get('last_name', '')}" if visitor else "Bilinmeyen",
             "visitor_phone": visitor.get("phone", "") if visitor else ""
         })
-
     return result
 
 @api_router.get("/analytics")
 async def get_analytics(current_user: dict = Depends(get_current_user)):
-    properties_result = supabase.table("properties").select("*").eq("user_id", current_user["id"]).execute()
-    properties = properties_result.data
-
+    cursor = db.properties.find({"user_id": current_user["id"]})
+    properties = await cursor.to_list(1000)
     property_ids = [p["id"] for p in properties]
-
     total_views = sum(p.get("view_count", 0) for p in properties)
     total_duration = sum(p.get("total_view_duration", 0) for p in properties)
     avg_duration = total_duration / total_views if total_views > 0 else 0
-
-    visitors_result = supabase.table("visitors").select("*").in_("property_id", property_ids).order("last_visit", desc=True).limit(100).execute()
-    visitors = visitors_result.data
-
+    visitor_cursor = db.visitors.find({"property_id": {"$in": property_ids}}).sort("last_visit", -1).limit(100)
+    visitors = await visitor_cursor.to_list(100)
     thirty_days_ago = (datetime.now(timezone.utc) - timedelta(days=30)).isoformat()
-    visits_result = supabase.table("visits").select("*").in_("property_id", property_ids).gte("visited_at", thirty_days_ago).limit(1000).execute()
-    visits = visits_result.data
-
+    visit_cursor = db.visits.find({"property_id": {"$in": property_ids}, "visited_at": {"$gte": thirty_days_ago}}).limit(1000)
+    visits = await visit_cursor.to_list(1000)
     daily_views = {}
     for visit in visits:
         date = visit["visited_at"][:10]
         daily_views[date] = daily_views.get(date, 0) + 1
-
     daily_views_list = [{"date": k, "views": v} for k, v in sorted(daily_views.items())]
-
     top_properties = sorted(properties, key=lambda x: x.get("view_count", 0), reverse=True)[:5]
-
     return {
         "total_views": total_views,
         "total_duration": total_duration,
@@ -1263,24 +1095,21 @@ async def get_analytics(current_user: dict = Depends(get_current_user)):
             "views": p.get("view_count", 0),
             "avg_duration": p.get("total_view_duration", 0) / max(p.get("view_count", 1), 1)
         } for p in top_properties],
-        "recent_visitors": visitors[:10]
+        "recent_visitors": [{k: v for k, v in v.items() if k != '_id'} for v in visitors[:10]]
     }
 
-# Admin Routes
 @admin_router.post("/login")
 async def admin_login(data: AdminLogin):
     if data.email != "yadigrb" or data.password != "Yadigar34":
-        raise HTTPException(status_code=401, detail="Geçersiz kimlik bilgileri")
-
+        raise HTTPException(status_code=401, detail="Gecersiz kimlik bilgileri")
     admin_id = "admin-mekan360"
     token = create_token(admin_id, is_admin=True)
     return {"access_token": token, "token_type": "bearer"}
 
 @admin_router.get("/users")
 async def admin_get_users(admin: dict = Depends(get_admin_user)):
-    users_result = supabase.table("users").select("*").order("created_at", desc=True).limit(500).execute()
-    users = users_result.data
-
+    cursor = db.users.find().sort("created_at", -1).limit(500)
+    users = await cursor.to_list(500)
     enriched_users = []
     for user in users:
         package_info = PACKAGES.get(user.get("package", "free"), PACKAGES["free"])
@@ -1290,47 +1119,38 @@ async def admin_get_users(admin: dict = Depends(get_admin_user)):
         user["property_count"] = user.get("property_count", 0)
         user["auto_payment"] = user.get("auto_payment", False)
         user.pop('password', None)
+        user.pop('_id', None)
         enriched_users.append(user)
-
     return enriched_users
 
 @admin_router.get("/users/{user_id}")
 async def admin_get_user(user_id: str, admin: dict = Depends(get_admin_user)):
-    user_result = supabase.table("users").select("*").eq("id", user_id).execute()
-    if not user_result.data or len(user_result.data) == 0:
-        raise HTTPException(status_code=404, detail="Kullanıcı bulunamadı")
-
-    user = user_result.data[0]
+    user = await db.users.find_one({"id": user_id})
+    if not user:
+        raise HTTPException(status_code=404, detail="Kullanici bulunamadi")
     user.pop('password', None)
-
+    user.pop('_id', None)
     package_info = PACKAGES.get(user.get("package", "free"), PACKAGES["free"])
     user["package_name"] = package_info["name"]
     user["property_limit"] = package_info["property_limit"]
     user["has_360"] = package_info["has_360"]
     user["property_count"] = user.get("property_count", 0)
     user["auto_payment"] = user.get("auto_payment", False)
-
-    payments_result = supabase.table("payments").select("*").eq("user_id", user_id).order("payment_date", desc=True).limit(50).execute()
-
-    return {**user, "payments": payments_result.data}
+    cursor = db.payments.find({"user_id": user_id}).sort("payment_date", -1).limit(50)
+    payments = await cursor.to_list(50)
+    return {**user, "payments": [{k: v for k, v in p.items() if k != '_id'} for p in payments]}
 
 @admin_router.put("/users/{user_id}")
 async def admin_update_user(user_id: str, data: AdminUserUpdate, admin: dict = Depends(get_admin_user)):
-    user_result = supabase.table("users").select("*").eq("id", user_id).execute()
-    if not user_result.data or len(user_result.data) == 0:
-        raise HTTPException(status_code=404, detail="Kullanıcı bulunamadı")
-
-    user = user_result.data[0]
-
+    user = await db.users.find_one({"id": user_id})
+    if not user:
+        raise HTTPException(status_code=404, detail="Kullanici bulunamadi")
     update_data = {k: v for k, v in data.model_dump().items() if v is not None}
-
     if update_data.get("password"):
         update_data["password"] = hash_password(update_data["password"])
-
     if update_data.get("subscription_days"):
         days = update_data.pop("subscription_days")
         now = datetime.now(timezone.utc)
-
         current_end_str = user.get("subscription_end")
         if current_end_str:
             try:
@@ -1343,10 +1163,8 @@ async def admin_update_user(user_id: str, data: AdminUserUpdate, admin: dict = D
                 new_expiry = now + timedelta(days=days)
         else:
             new_expiry = now + timedelta(days=days)
-
         update_data["subscription_end"] = new_expiry.isoformat()
         update_data["subscription_status"] = "active"
-
     elif update_data.get("subscription_status") == "active":
         current_end = user.get("subscription_end")
         is_expired = False
@@ -1356,52 +1174,34 @@ async def admin_update_user(user_id: str, data: AdminUserUpdate, admin: dict = D
                     is_expired = True
             except:
                 is_expired = True
-
         if not current_end or is_expired:
             new_expiry = datetime.now(timezone.utc) + timedelta(days=30)
             update_data["subscription_end"] = new_expiry.isoformat()
-
     update_data["updated_at"] = datetime.now(timezone.utc).isoformat()
-
-    supabase.table("users").update(update_data).eq("id", user_id).execute()
-
-    updated_result = supabase.table("users").select("*").eq("id", user_id).execute()
-    updated = updated_result.data[0]
+    await db.users.update_one({"id": user_id}, {"$set": update_data})
+    updated = await db.users.find_one({"id": user_id})
     updated.pop('password', None)
+    updated.pop('_id', None)
     return updated
 
 @admin_router.get("/payments")
 async def admin_get_payments(admin: dict = Depends(get_admin_user)):
-    payments_result = supabase.table("payments").select("*").order("payment_date", desc=True).limit(500).execute()
-    return payments_result.data
+    cursor = db.payments.find().sort("payment_date", -1).limit(500)
+    payments = await cursor.to_list(500)
+    return [{k: v for k, v in p.items() if k != '_id'} for p in payments]
 
 @admin_router.get("/stats")
 async def admin_get_stats(admin: dict = Depends(get_admin_user)):
-    total_users_result = supabase.table("users").select("id", count="exact").execute()
-    total_users = total_users_result.count or 0
-
-    active_users_result = supabase.table("users").select("id", count="exact").eq("subscription_status", "active").execute()
-    active_users = active_users_result.count or 0
-
-    total_properties_result = supabase.table("properties").select("id", count="exact").execute()
-    total_properties = total_properties_result.count or 0
-
-    total_payments_result = supabase.table("payments").select("id", count="exact").execute()
-    total_payments = total_payments_result.count or 0
-
-    payments_result = supabase.table("payments").select("*").eq("status", "completed").limit(1000).execute()
-    payments = payments_result.data
+    total_users = await db.users.count_documents({})
+    active_users = await db.users.count_documents({"subscription_status": "active"})
+    total_properties = await db.properties.count_documents({})
+    total_payments = await db.payments.count_documents({})
+    cursor = db.payments.find({"status": "completed"}).limit(1000)
+    payments = await cursor.to_list(1000)
     total_revenue = sum(p.get("amount", 0) for p in payments)
-
-    starter_result = supabase.table("users").select("id", count="exact").eq("package", "starter").execute()
-    starter_count = starter_result.count or 0
-
-    premium_result = supabase.table("users").select("id", count="exact").eq("package", "premium").execute()
-    premium_count = premium_result.count or 0
-
-    ultra_result = supabase.table("users").select("id", count="exact").eq("package", "ultra").execute()
-    ultra_count = ultra_result.count or 0
-
+    starter_count = await db.users.count_documents({"package": "starter"})
+    premium_count = await db.users.count_documents({"package": "premium"})
+    ultra_count = await db.users.count_documents({"package": "ultra"})
     return {
         "total_users": total_users,
         "active_users": active_users,
@@ -1417,18 +1217,14 @@ async def admin_get_stats(admin: dict = Depends(get_admin_user)):
 
 @admin_router.post("/users")
 async def admin_create_user(data: AdminUserCreate, admin: dict = Depends(get_admin_user)):
-    """Admin creates a new user manually"""
-    existing_result = supabase.table("users").select("*").eq("email", data.email).execute()
-    if existing_result.data and len(existing_result.data) > 0:
-        raise HTTPException(status_code=400, detail="Bu email zaten kayıtlı")
-
+    existing = await db.users.find_one({"email": data.email})
+    if existing:
+        raise HTTPException(status_code=400, detail="Bu email zaten kayitli")
     if data.package not in PACKAGES:
-        raise HTTPException(status_code=400, detail="Geçersiz paket")
-
+        raise HTTPException(status_code=400, detail="Gecersiz paket")
     user_id = str(uuid.uuid4())
     now = datetime.now(timezone.utc)
     subscription_end = now + timedelta(days=data.subscription_days)
-
     user_doc = {
         "id": user_id,
         "email": data.email,
@@ -1445,9 +1241,7 @@ async def admin_create_user(data: AdminUserCreate, admin: dict = Depends(get_adm
         "created_at": now.isoformat(),
         "updated_at": now.isoformat()
     }
-
-    supabase.table("users").insert(user_doc).execute()
-
+    await db.users.insert_one(user_doc)
     if data.subscription_status == "active":
         package_info = PACKAGES[data.package]
         payment_doc = {
@@ -1460,33 +1254,25 @@ async def admin_create_user(data: AdminUserCreate, admin: dict = Depends(get_adm
             "next_payment_date": subscription_end.isoformat(),
             "note": "Manuel ekleme (Admin)"
         }
-        supabase.table("payments").insert(payment_doc).execute()
-
-    return {"message": "Kullanıcı başarıyla eklendi", "user_id": user_id}
+        await db.payments.insert_one(payment_doc)
+    return {"message": "Kullanici basariyla eklendi", "user_id": user_id}
 
 @admin_router.delete("/users/{user_id}")
 async def admin_delete_user(user_id: str, admin: dict = Depends(get_admin_user)):
-    """Admin deletes a user"""
-    user_result = supabase.table("users").select("*").eq("id", user_id).execute()
-    if not user_result.data or len(user_result.data) == 0:
-        raise HTTPException(status_code=404, detail="Kullanıcı bulunamadı")
-
-    supabase.table("properties").delete().eq("user_id", user_id).execute()
-    supabase.table("groups").delete().eq("user_id", user_id).execute()
-    supabase.table("visitors").delete().eq("user_id", user_id).execute()
-    supabase.table("payments").delete().eq("user_id", user_id).execute()
-    supabase.table("users").delete().eq("id", user_id).execute()
-
-    return {"message": "Kullanıcı ve tüm verileri silindi"}
-
-# ==================== GROUP ROUTES ====================
+    user = await db.users.find_one({"id": user_id})
+    if not user:
+        raise HTTPException(status_code=404, detail="Kullanici bulunamadi")
+    await db.properties.delete_many({"user_id": user_id})
+    await db.groups.delete_many({"user_id": user_id})
+    await db.visitors.delete_many({"user_id": user_id})
+    await db.payments.delete_many({"user_id": user_id})
+    await db.users.delete_one({"id": user_id})
+    return {"message": "Kullanici ve tum verileri silindi"}
 
 @api_router.post("/groups", response_model=GroupResponse)
 async def create_group(group_data: GroupCreate, current_user: dict = Depends(get_current_user)):
-    """Create a new property group"""
     group_id = str(uuid.uuid4())
     now = datetime.now(timezone.utc).isoformat()
-
     group_doc = {
         "id": group_id,
         "user_id": current_user["id"],
@@ -1498,134 +1284,104 @@ async def create_group(group_data: GroupCreate, current_user: dict = Depends(get
         "updated_at": now,
         "share_link": f"/group/{group_id}"
     }
-
-    supabase.table("groups").insert(group_doc).execute()
+    await db.groups.insert_one(group_doc)
+    group_doc.pop('_id', None)
     return GroupResponse(**group_doc)
 
 @api_router.get("/groups", response_model=List[GroupResponse])
 async def get_user_groups(current_user: dict = Depends(get_current_user)):
-    """Get all groups for current user"""
-    groups_result = supabase.table("groups").select("*").eq("user_id", current_user["id"]).order("created_at", desc=True).limit(100).execute()
-
-    return [GroupResponse(**g) for g in groups_result.data]
+    cursor = db.groups.find({"user_id": current_user["id"]}).sort("created_at", -1).limit(100)
+    groups = await cursor.to_list(100)
+    return [GroupResponse(**{k: v for k, v in g.items() if k != '_id'}) for g in groups]
 
 @api_router.get("/groups/{group_id}", response_model=GroupResponse)
 async def get_group(group_id: str, current_user: dict = Depends(get_current_user)):
-    """Get a specific group"""
-    group_result = supabase.table("groups").select("*").eq("id", group_id).eq("user_id", current_user["id"]).execute()
-    if not group_result.data or len(group_result.data) == 0:
-        raise HTTPException(status_code=404, detail="Grup bulunamadı")
-    return GroupResponse(**group_result.data[0])
+    group = await db.groups.find_one({"id": group_id, "user_id": current_user["id"]})
+    if not group:
+        raise HTTPException(status_code=404, detail="Grup bulunamadi")
+    group.pop('_id', None)
+    return GroupResponse(**group)
 
 @api_router.put("/groups/{group_id}", response_model=GroupResponse)
 async def update_group(group_id: str, group_data: GroupUpdate, current_user: dict = Depends(get_current_user)):
-    """Update a group"""
-    group_result = supabase.table("groups").select("*").eq("id", group_id).eq("user_id", current_user["id"]).execute()
-    if not group_result.data or len(group_result.data) == 0:
-        raise HTTPException(status_code=404, detail="Grup bulunamadı")
-
+    group = await db.groups.find_one({"id": group_id, "user_id": current_user["id"]})
+    if not group:
+        raise HTTPException(status_code=404, detail="Grup bulunamadi")
     update_data = {k: v for k, v in group_data.model_dump().items() if v is not None}
     update_data["updated_at"] = datetime.now(timezone.utc).isoformat()
-
-    supabase.table("groups").update(update_data).eq("id", group_id).execute()
-
-    updated_result = supabase.table("groups").select("*").eq("id", group_id).execute()
-    return GroupResponse(**updated_result.data[0])
+    await db.groups.update_one({"id": group_id}, {"$set": update_data})
+    updated = await db.groups.find_one({"id": group_id})
+    updated.pop('_id', None)
+    return GroupResponse(**updated)
 
 @api_router.delete("/groups/{group_id}")
 async def delete_group(group_id: str, current_user: dict = Depends(get_current_user)):
-    """Delete a group"""
-    group_result = supabase.table("groups").select("*").eq("id", group_id).eq("user_id", current_user["id"]).execute()
-    if not group_result.data or len(group_result.data) == 0:
-        raise HTTPException(status_code=404, detail="Grup bulunamadı")
-
-    supabase.table("groups").delete().eq("id", group_id).execute()
-    return {"message": "Grup başarıyla silindi"}
+    group = await db.groups.find_one({"id": group_id, "user_id": current_user["id"]})
+    if not group:
+        raise HTTPException(status_code=404, detail="Grup bulunamadi")
+    await db.groups.delete_one({"id": group_id})
+    return {"message": "Grup basariyla silindi"}
 
 @api_router.post("/groups/{group_id}/properties/{property_id}")
 async def add_property_to_group(group_id: str, property_id: str, current_user: dict = Depends(get_current_user)):
-    """Add a property to a group"""
-    group_result = supabase.table("groups").select("*").eq("id", group_id).eq("user_id", current_user["id"]).execute()
-    if not group_result.data or len(group_result.data) == 0:
-        raise HTTPException(status_code=404, detail="Grup bulunamadı")
-
-    group = group_result.data[0]
-
-    property_result = supabase.table("properties").select("*").eq("id", property_id).eq("user_id", current_user["id"]).execute()
-    if not property_result.data or len(property_result.data) == 0:
-        raise HTTPException(status_code=404, detail="Gayrimenkul bulunamadı")
-
+    group = await db.groups.find_one({"id": group_id, "user_id": current_user["id"]})
+    if not group:
+        raise HTTPException(status_code=404, detail="Grup bulunamadi")
+    property_doc = await db.properties.find_one({"id": property_id, "user_id": current_user["id"]})
+    if not property_doc:
+        raise HTTPException(status_code=404, detail="Gayrimenkul bulunamadi")
     property_ids = group.get("property_ids", [])
     if property_id not in property_ids:
         property_ids.append(property_id)
-        supabase.table("groups").update({
-            "property_ids": property_ids,
-            "updated_at": datetime.now(timezone.utc).isoformat()
-        }).eq("id", group_id).execute()
-
+        await db.groups.update_one(
+            {"id": group_id},
+            {"$set": {"property_ids": property_ids, "updated_at": datetime.now(timezone.utc).isoformat()}}
+        )
     return {"message": "Gayrimenkul gruba eklendi"}
 
 @api_router.delete("/groups/{group_id}/properties/{property_id}")
 async def remove_property_from_group(group_id: str, property_id: str, current_user: dict = Depends(get_current_user)):
-    """Remove a property from a group"""
-    group_result = supabase.table("groups").select("*").eq("id", group_id).eq("user_id", current_user["id"]).execute()
-    if not group_result.data or len(group_result.data) == 0:
-        raise HTTPException(status_code=404, detail="Grup bulunamadı")
-
-    group = group_result.data[0]
+    group = await db.groups.find_one({"id": group_id, "user_id": current_user["id"]})
+    if not group:
+        raise HTTPException(status_code=404, detail="Grup bulunamadi")
     property_ids = group.get("property_ids", [])
-
     if property_id in property_ids:
         property_ids.remove(property_id)
-        supabase.table("groups").update({
-            "property_ids": property_ids,
-            "updated_at": datetime.now(timezone.utc).isoformat()
-        }).eq("id", group_id).execute()
-
-    return {"message": "Gayrimenkul gruptan çıkarıldı"}
+        await db.groups.update_one(
+            {"id": group_id},
+            {"$set": {"property_ids": property_ids, "updated_at": datetime.now(timezone.utc).isoformat()}}
+        )
+    return {"message": "Gayrimenkul gruptan cikarildi"}
 
 @api_router.get("/public/groups/{group_id}")
 async def get_public_group(group_id: str):
-    """Public endpoint to view a shared group"""
-    group_result = supabase.table("groups").select("*").eq("id", group_id).execute()
-    if not group_result.data or len(group_result.data) == 0:
-        raise HTTPException(status_code=404, detail="Grup bulunamadı")
-
-    group = group_result.data[0]
-
+    group = await db.groups.find_one({"id": group_id})
+    if not group:
+        raise HTTPException(status_code=404, detail="Grup bulunamadi")
+    group.pop('_id', None)
     property_ids = group.get("property_ids", [])
-    properties_result = supabase.table("properties").select("*").in_("id", property_ids).execute()
-
+    cursor = db.properties.find({"id": {"$in": property_ids}})
+    properties = await cursor.to_list(100)
     return {
         "group": GroupResponse(**group),
-        "properties": [PropertyResponse(**p) for p in properties_result.data]
+        "properties": [PropertyResponse(**{k: v for k, v in p.items() if k != '_id'}) for p in properties]
     }
-
-# ==================== SETUP ADMIN ====================
-
-@api_router.post("/setup-admin")
-async def setup_admin():
-    """One-time admin setup - remove in production"""
-    return {"message": "Admin kullanıcısı fixed credentials ile çalışıyor"}
-
-# ==================== HEALTH CHECK ====================
 
 @api_router.get("/")
 async def root():
-    return {"message": "mekan360 API", "status": "running", "version": "2.0", "database": "Supabase"}
+    return {"message": "Mekan360 API", "status": "running", "version": "2.0", "database": "MongoDB"}
 
 @api_router.get("/health")
 async def health():
-    return {"status": "healthy", "database": "Supabase"}
+    return {"status": "healthy", "database": "MongoDB"}
 
-# Include routers
 app.include_router(api_router)
 app.include_router(admin_router)
 
 app.add_middleware(
     CORSMiddleware,
     allow_credentials=True,
-    allow_origins=os.environ.get('CORS_ORIGINS', '*').split(','),
+    allow_origins=["*"],
     allow_methods=["*"],
     allow_headers=["*"],
 )
